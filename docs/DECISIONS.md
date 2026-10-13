@@ -140,3 +140,20 @@ Keep superseded decisions. Link the replacement rather than rewriting history.
   override is one more thing to remove.
 - **Revisit when:** `next` is upgraded to a version that ships a fixed `postcss`:
   delete the override in the same change.
+
+## D-011: the known-food floor errs towards cooking
+
+- **Status:** Accepted
+- **Date:** 2026-10-13
+- **Decision:** `spice/foods.py` treats a list as cookable if any word in it is
+  a known food. It does not read context, so "fish tank" or "cream cleaner"
+  counts as food.
+- **Why:** The owner's rule is that a preset, and real food generally, is never
+  rejected. The two mistakes are not equal: refusing couscous insults a cook;
+  mistaking a fish tank for food costs one more model call and, if the model
+  refuses twice, a plain "We couldn't make a plan from that" instead of the
+  refusal sentence. Raised by Codex in review of P3.2 as should-fix; deferred.
+- **Alternatives:** Matching whole ingredient names (misses "tinned tomatoes",
+  "frozen peas"). A list of non-food head nouns (never complete).
+- **Revisit when:** The logs show "Model rejected real food" for lists that were
+  not food more than rarely.

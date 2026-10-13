@@ -172,6 +172,11 @@ _NOT_A_REJECTION = (
 )
 
 
+# Sent while a rejection is being withheld. The web client ignores the event
+# but counts the bytes, so its idle timeout does not fire during a retry.
+_WAIT = {"event": "wait", "data": {}}
+
+
 def _daily_cap() -> int:
     return int(os.environ.get("DAILY_LLM_CAP", "1000"))
 
@@ -304,15 +309,14 @@ async def run(job: Job, *, stream: bool = True) -> AsyncIterator[dict]:
         yield {"event": "final", "data": resp.model_dump(mode="json")}
         return
 
+    # One deadline covers the retry too: a refusal must not double the wait.
     messages = job.messages
-    for attempt in range(2):
-        text = ""
-        try:
-            async with asyncio.timeout(
-                float(os.environ.get("GENERATION_DEADLINE", "75"))
-            ):
+    text = ""
+    refused = False
+    try:
+        async with asyncio.timeout(float(os.environ.get("GENERATION_DEADLINE", "75"))):
+            for attempt in range(2):
                 buf: list[str] = []
-
                 if stream:
                     async for snap in _snapshots(
                         _collect(messages, job.temperature, buf)
@@ -322,33 +326,38 @@ async def run(job: Job, *, stream: bool = True) -> AsyncIterator[dict]:
                     async for _ in _collect(messages, job.temperature, buf):
                         pass
                 text = "".join(buf)
-            resp = _from_draft(llm.extract_json(text))
-        except TimeoutError:
-            logger.warning("Generation timed out")
-            yield _error(504, "SPICE took too long thinking about this one. Try again.")
-            return
-        except (json.JSONDecodeError, ValidationError) as exc:
-            logger.warning("Unparseable model output: %s; raw=%r", exc, text[:500])
-            yield _error(
-                502, "The model returned a plan SPICE couldn't read. Try again."
-            )
-            return
-        except Exception:
-            logger.exception("Generation failed")
-            yield _error(
-                502, "The recipe model is unavailable right now. Try again in a moment."
-            )
-            return
-
-        if not (resp.rejection and has_known_food(job.req.ingredients)):
-            break
-        # The model refused real food. Ask once more, told not to; a second
-        # refusal is our failure, and the cook gets an error, not a roast.
-        logger.warning("Model rejected real food: %r", resp.rejection)
-        if attempt == 1 or not reserve_llm_call(_daily_cap()):
-            yield _error(502, "We couldn't make a plan from that. Try again.")
-            return
-        messages = [*job.messages, {"role": "user", "content": _NOT_A_REJECTION}]
+                resp = _from_draft(llm.extract_json(text))
+                if not (resp.rejection and has_known_food(job.req.ingredients)):
+                    break
+                # The model refused real food. Ask once more, told not to; a
+                # second refusal is our failure, and the cook gets an error,
+                # not a roast.
+                logger.warning("Model rejected real food: %r", resp.rejection)
+                if attempt == 1 or not reserve_llm_call(_daily_cap()):
+                    refused = True
+                    break
+                messages = [
+                    *job.messages,
+                    {"role": "user", "content": _NOT_A_REJECTION},
+                ]
+                yield _WAIT
+    except TimeoutError:
+        logger.warning("Generation timed out")
+        yield _error(504, "SPICE took too long thinking about this one. Try again.")
+        return
+    except (json.JSONDecodeError, ValidationError) as exc:
+        logger.warning("Unparseable model output: %s; raw=%r", exc, text[:500])
+        yield _error(502, "The model returned a plan SPICE couldn't read. Try again.")
+        return
+    except Exception:
+        logger.exception("Generation failed")
+        yield _error(
+            502, "The recipe model is unavailable right now. Try again in a moment."
+        )
+        return
+    if refused:
+        yield _error(502, "We couldn't make a plan from that. Try again.")
+        return
 
     # Cache the model output only — community/meta are per-request. A rejection
     # is never cached: a wrong one would be replayed for the cache's lifetime.
@@ -374,10 +383,11 @@ async def _snapshots(deltas: AsyncIterator[str]) -> AsyncIterator[dict]:
         if now - last_emit < _PARTIAL_EVERY_S:
             continue
         snap = parse_partial(text)
+        if not snap or snap == last:
+            continue
+        last, last_emit = snap, now
         # A rejection is only shown once the engine has decided to honour it.
-        if snap and snap != last and not snap.get("rejection"):
-            last, last_emit = snap, now
-            yield {"event": "partial", "data": snap}
+        yield _WAIT if snap.get("rejection") else {"event": "partial", "data": snap}
 
 
 def _error(status: int, message: str) -> dict:

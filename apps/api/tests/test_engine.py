@@ -464,6 +464,27 @@ def test_no_partial_carries_a_rejection(scripted_model):
     assert events[-1][0] == "final"
     assert events[-1][1]["title"] == "Fake fried rice"
     assert not [d for e, d in events if e == "partial" and d.get("rejection")]
+    # The client's idle timer is fed while the refusal is withheld.
+    assert "wait" in [e for e, _ in events]
+
+
+def test_one_deadline_covers_the_retry(scripted_model, monkeypatch):
+    import asyncio
+
+    queue, _calls = scripted_model
+    queue.append(_REJECTION)
+    real = llm.stream_text
+
+    async def slow(messages, temperature):
+        await asyncio.sleep(0.15)
+        async for delta in real(messages, temperature):
+            yield delta
+
+    monkeypatch.setattr(llm, "stream_text", slow)
+    monkeypatch.setenv("GENERATION_DEADLINE", "0.25")
+    res = client.post("/v1/suggest", json={"ingredients": ["couscous", "reject-e"]})
+    # Each attempt alone fits the deadline; only the two together exceed it.
+    assert res.status_code == 504
 
 
 def test_every_preset_is_made_of_known_food():
