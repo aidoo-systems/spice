@@ -3,12 +3,14 @@
 import pytest
 
 from spice.db import (
+    combo_exists,
+    get_cached_generation,
+    get_feedback_breakdown,
     make_combo_hash,
     record_combo,
-    combo_exists,
+    record_cooked,
     record_feedback,
-    get_feedback_breakdown,
-    get_cached_generation,
+    reserve_llm_call,
     store_generation,
 )
 
@@ -23,7 +25,7 @@ def test_make_combo_hash_is_deterministic():
 def test_make_combo_hash_normalizes_case_and_whitespace():
     """Case and surrounding whitespace must not fragment a combo."""
     sig1, h1 = make_combo_hash(["  Onion ", "EGG"], "umami")
-    sig2, h2 = make_combo_hash(["egg", "onion"], "umami")
+    _sig2, h2 = make_combo_hash(["egg", "onion"], "umami")
     assert sig1 == "egg,onion|umami"
     assert h1 == h2
 
@@ -61,12 +63,23 @@ def test_make_combo_hash_none_flavour():
     assert sig.endswith("|none")
 
 
-def test_record_combo_returns_count():
+def test_record_combo_returns_cooked_count_not_requests():
     _, h = make_combo_hash(["db_test_x", "db_test_y"], "test_mode")
-    count1 = record_combo("db_test_x,db_test_y|test_mode", h)
-    assert count1 >= 1
-    count2 = record_combo("db_test_x,db_test_y|test_mode", h)
-    assert count2 == count1 + 1
+    assert record_combo("db_test_x,db_test_y|test_mode", h) == 0
+    assert record_combo("db_test_x,db_test_y|test_mode", h) == 0
+    assert record_cooked(h) == 1
+    assert record_combo("db_test_x,db_test_y|test_mode", h) == 1
+
+
+def test_reserve_llm_call_enforces_daily_cap():
+    from spice.db import _get_conn, _lock
+
+    with _lock:
+        _get_conn().execute("DELETE FROM usage")
+    assert reserve_llm_call(2) is True
+    assert reserve_llm_call(2) is True
+    assert reserve_llm_call(2) is False
+    assert reserve_llm_call(0) is True  # 0 disables the cap
 
 
 def test_combo_exists_after_record():
@@ -103,6 +116,7 @@ def test_record_feedback_for_nonexistent_combo_raises():
     """Feedback for a combo that doesn't exist should fail with FK constraint."""
     import hashlib
     import sqlite3
+
     h = hashlib.sha256(b"nonexistent_fk_test").hexdigest()
     with pytest.raises(sqlite3.IntegrityError):
         record_feedback(h, "perfect")

@@ -5,7 +5,9 @@ import os
 import sqlite3
 import threading
 
-_DB_PATH = os.environ.get("DB_PATH", os.path.join(os.path.dirname(__file__), "data", "spice.db"))
+_DB_PATH = os.environ.get(
+    "DB_PATH", os.path.join(os.path.dirname(__file__), "data", "spice.db")
+)
 _conn: sqlite3.Connection | None = None
 _lock = threading.Lock()
 
@@ -23,6 +25,7 @@ def init_db() -> None:
             combo_hash   TEXT PRIMARY KEY,
             combo_sig    TEXT NOT NULL,
             hit_count    INTEGER NOT NULL DEFAULT 0,
+            cooked_count INTEGER NOT NULL DEFAULT 0,
             created_at   TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
         );
@@ -41,7 +44,19 @@ def init_db() -> None:
             response_json TEXT NOT NULL,
             created_at    TEXT NOT NULL DEFAULT (datetime('now'))
         );
+
+        CREATE TABLE IF NOT EXISTS usage (
+            day        TEXT PRIMARY KEY,
+            llm_calls  INTEGER NOT NULL DEFAULT 0
+        );
     """)
+    # Migrate pre-0.8 databases: hit_count used to be shown as "people cooked
+    # this", but it counts generation requests. cooked_count starts honest at 0.
+    cols = {r[1] for r in _conn.execute("PRAGMA table_info(combos)").fetchall()}
+    if "cooked_count" not in cols:
+        _conn.execute(
+            "ALTER TABLE combos ADD COLUMN cooked_count INTEGER NOT NULL DEFAULT 0"
+        )
     _conn.commit()
 
 
@@ -68,7 +83,9 @@ def normalize_ingredient(name: str) -> str:
     return " ".join(name.strip().lower().split())
 
 
-def make_combo_hash(ingredients: list[str], flavour_mode: str | None) -> tuple[str, str]:
+def make_combo_hash(
+    ingredients: list[str], flavour_mode: str | None
+) -> tuple[str, str]:
     """Return (combo_sig, combo_hash). Matches frontend makeSignature exactly."""
     normalized = sorted(normalize_ingredient(i) for i in ingredients)
     sig = ",".join(normalized) + "|" + (flavour_mode or "none")
@@ -77,7 +94,8 @@ def make_combo_hash(ingredients: list[str], flavour_mode: str | None) -> tuple[s
 
 
 def record_combo(combo_sig: str, combo_hash: str) -> int:
-    """Upsert combo and return the new hit_count."""
+    """Upsert combo, bump its request counter (internal analytics only), and
+    return the cooked_count — the number users actually see."""
     conn = _get_conn()
     with _lock:
         conn.execute(
@@ -88,14 +106,33 @@ def record_combo(combo_sig: str, combo_hash: str) -> int:
             (combo_hash, combo_sig),
         )
         conn.commit()
-    row = conn.execute("SELECT hit_count FROM combos WHERE combo_hash = ?", (combo_hash,)).fetchone()
+        row = conn.execute(
+            "SELECT cooked_count FROM combos WHERE combo_hash = ?", (combo_hash,)
+        ).fetchone()
+    return row[0] if row else 0
+
+
+def record_cooked(combo_hash: str) -> int:
+    """Increment and return cooked_count for an existing combo."""
+    conn = _get_conn()
+    with _lock:
+        conn.execute(
+            "UPDATE combos SET cooked_count = cooked_count + 1, updated_at = datetime('now') WHERE combo_hash = ?",
+            (combo_hash,),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT cooked_count FROM combos WHERE combo_hash = ?", (combo_hash,)
+        ).fetchone()
     return row[0] if row else 0
 
 
 def combo_exists(combo_hash: str) -> bool:
     conn = _get_conn()
     with _lock:
-        row = conn.execute("SELECT 1 FROM combos WHERE combo_hash = ?", (combo_hash,)).fetchone()
+        row = conn.execute(
+            "SELECT 1 FROM combos WHERE combo_hash = ?", (combo_hash,)
+        ).fetchone()
     return row is not None
 
 
@@ -124,12 +161,16 @@ def get_feedback_breakdown(combo_hash: str) -> tuple[dict[str, int], int]:
     return breakdown, total
 
 
+_CACHE_TTL_DAYS = int(os.environ.get("GENERATION_CACHE_TTL_DAYS", "30"))
+
+
 def get_cached_generation(cache_key: str) -> str | None:
-    """Return a previously stored generation JSON blob, or None on a miss."""
+    """Return a stored generation JSON blob younger than the TTL, or None."""
     conn = _get_conn()
     with _lock:
         row = conn.execute(
-            "SELECT response_json FROM generations WHERE cache_key = ?", (cache_key,)
+            "SELECT response_json FROM generations WHERE cache_key = ? AND created_at > datetime('now', ?)",
+            (cache_key, f"-{_CACHE_TTL_DAYS} days"),
         ).fetchone()
     return row[0] if row else None
 
@@ -146,3 +187,25 @@ def store_generation(cache_key: str, response_json: str) -> None:
             (cache_key, response_json),
         )
         conn.commit()
+
+
+def reserve_llm_call(daily_cap: int) -> bool:
+    """Count one live model call against today's budget.
+
+    Returns False (and counts nothing) once the cap is reached, so a leaked
+    URL or a scripted client can't run up an unbounded bill. 0 disables it.
+    """
+    conn = _get_conn()
+    with _lock:
+        row = conn.execute(
+            "SELECT llm_calls FROM usage WHERE day = date('now')"
+        ).fetchone()
+        used = row[0] if row else 0
+        if daily_cap > 0 and used >= daily_cap:
+            return False
+        conn.execute(
+            """INSERT INTO usage (day, llm_calls) VALUES (date('now'), 1)
+               ON CONFLICT(day) DO UPDATE SET llm_calls = llm_calls + 1"""
+        )
+        conn.commit()
+    return True

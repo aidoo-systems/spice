@@ -9,13 +9,16 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from spice.db import init_db, close_db
+from spice.db import close_db, init_db
 from spice.routes import router
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 
 log_level = os.environ.get("LOG_LEVEL", "info").upper()
-logging.basicConfig(level=getattr(logging, log_level, logging.INFO), format="%(asctime)s %(levelname)s %(message)s")
+logging.basicConfig(
+    level=getattr(logging, log_level, logging.INFO),
+    format="%(asctime)s %(levelname)s %(message)s",
+)
 logger = logging.getLogger("spice")
 
 
@@ -61,7 +64,14 @@ async def log_requests(request: Request, call_next):
     start = time.time()
     response = await call_next(request)
     elapsed = round((time.time() - start) * 1000)
-    logger.info("req=%s method=%s path=%s status=%s ms=%d", request_id, request.method, request.url.path, response.status_code, elapsed)
+    logger.info(
+        "req=%s method=%s path=%s status=%s ms=%d",
+        request_id,
+        request.method,
+        request.url.path,
+        response.status_code,
+        elapsed,
+    )
     return response
 
 

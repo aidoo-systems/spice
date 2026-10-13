@@ -1,12 +1,14 @@
 """Tests for the /v1/suggest endpoint – premium schema."""
 
 import json
-import sys
 import os
+import sys
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "packages"))
+sys.path.insert(
+    0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "packages")
+)
 
 from fastapi.testclient import TestClient
 from shared.schemas import SuggestResponse, UpgradeLadder
@@ -18,24 +20,31 @@ client = TestClient(app)
 
 # ── Validation tests ──────────────────────────────────────────────
 
+
 def test_empty_ingredients_returns_422():
     res = client.post("/v1/suggest", json={"ingredients": []})
     assert res.status_code == 422
 
 
 def test_missing_body_returns_422():
-    res = client.post("/v1/suggest", content=b"not json", headers={"Content-Type": "application/json"})
+    res = client.post(
+        "/v1/suggest", content=b"not json", headers={"Content-Type": "application/json"}
+    )
     assert res.status_code == 422
 
 
 # ── Schema compliance ─────────────────────────────────────────────
 
+
 def test_response_matches_new_schema():
     """Response should include upgrade_ladder, why_this_works, t_seconds steps."""
-    res = client.post("/v1/suggest", json={
-        "ingredients": ["maggi noodles", "onion"],
-        "constraints": {"flavour_mode": "umami", "skill_mode": "beginner"},
-    })
+    res = client.post(
+        "/v1/suggest",
+        json={
+            "ingredients": ["maggi noodles", "onion"],
+            "constraints": {"flavour_mode": "umami", "skill_mode": "beginner"},
+        },
+    )
     assert res.status_code == 200
     data = res.json()
     parsed = SuggestResponse.model_validate(data)
@@ -49,9 +58,12 @@ def test_response_matches_new_schema():
 
 
 def test_steps_use_t_seconds_and_are_ordered():
-    res = client.post("/v1/suggest", json={
-        "ingredients": ["rice", "egg", "soy sauce", "garlic"],
-    })
+    res = client.post(
+        "/v1/suggest",
+        json={
+            "ingredients": ["rice", "egg", "soy sauce", "garlic"],
+        },
+    )
     assert res.status_code == 200
     steps = res.json()["steps"]
     times = [s["t_seconds"] for s in steps]
@@ -61,14 +73,18 @@ def test_steps_use_t_seconds_and_are_ordered():
 
 def test_steps_have_optional_tips():
     """At least one step in the Maggi mock should have a tip."""
-    res = client.post("/v1/suggest", json={
-        "ingredients": ["maggi noodles", "onion"],
-    })
+    res = client.post(
+        "/v1/suggest",
+        json={
+            "ingredients": ["maggi noodles", "onion"],
+        },
+    )
     tips = [s.get("tip") for s in res.json()["steps"] if s.get("tip")]
     assert len(tips) >= 1
 
 
 # ── Upgrade ladder gating ─────────────────────────────────────────
+
 
 def test_upgrade_ladder_structure():
     """Response should have tiered upgrade ladder."""
@@ -97,6 +113,7 @@ def test_upgrades_require_missing_ingredients():
 
 # ── Minimal rescue ────────────────────────────────────────────────
 
+
 def test_single_ingredient_triggers_rescue():
     """A single ingredient should trigger minimal_rescue."""
     res = client.post("/v1/suggest", json={"ingredients": ["maggi noodles"]})
@@ -108,51 +125,64 @@ def test_single_ingredient_triggers_rescue():
     assert parsed.minimal_rescue.enabled is True
     assert len(parsed.minimal_rescue.flavour_hacks) >= 1
     assert len(parsed.minimal_rescue.ask_for) >= 1
-    assert parsed.minimal_rescue.rescue_line == "You're 2 steps away from elite noodles."
+    assert (
+        parsed.minimal_rescue.rescue_line == "You're 2 steps away from elite noodles."
+    )
 
 
 # ── Flavour mode + new request fields ────────────────────────────
 
+
 def test_request_accepts_new_fields():
     """Request should accept flavour_mode, skill_mode, pantry_items, feedback_history."""
-    res = client.post("/v1/suggest", json={
-        "ingredients": ["maggi noodles", "onion"],
-        "constraints": {
-            "flavour_mode": "bold_spicy",
-            "skill_mode": "confident",
+    res = client.post(
+        "/v1/suggest",
+        json={
+            "ingredients": ["maggi noodles", "onion"],
+            "constraints": {
+                "flavour_mode": "bold_spicy",
+                "skill_mode": "confident",
+            },
+            "pantry_items": ["oil", "salt"],
+            "feedback_history": ["too_bland"],
         },
-        "pantry_items": ["oil", "salt"],
-        "feedback_history": ["too_bland"],
-    })
+    )
     assert res.status_code == 200
     SuggestResponse.model_validate(res.json())
 
 
 def test_default_fallback_still_works():
     """Unknown ingredients should still return valid response."""
-    res = client.post("/v1/suggest", json={"ingredients": ["mystery paste", "other thing"]})
+    res = client.post(
+        "/v1/suggest", json={"ingredients": ["mystery paste", "other thing"]}
+    )
     assert res.status_code == 200
     SuggestResponse.model_validate(res.json())
 
 
 # ── JSON parsing robustness ──────────────────────────────────────
 
+
 def test_json_extract_strips_markdown_fences():
-    from spice.openai_service import _extract_json
+    from spice.llm import extract_json as _extract_json
+
     raw = '```json\n{"title": "test"}\n```'
     assert _extract_json(raw) == {"title": "test"}
 
 
 def test_json_extract_plain():
-    from spice.openai_service import _extract_json
+    from spice.llm import extract_json as _extract_json
+
     raw = '{"title": "test", "steps": []}'
     assert _extract_json(raw) == {"title": "test", "steps": []}
 
 
 # ── Feedback guidance ─────────────────────────────────────────────
 
+
 def test_feedback_guidance_mapping():
-    from spice.openai_service import _FEEDBACK_GUIDANCE
+    from spice.engine import _FEEDBACK_GUIDANCE
+
     assert "too_salty" in _FEEDBACK_GUIDANCE
     assert "too_bland" in _FEEDBACK_GUIDANCE
     assert "needs_spice" in _FEEDBACK_GUIDANCE
@@ -160,6 +190,7 @@ def test_feedback_guidance_mapping():
 
 
 # ── Calorie estimates ────────────────────────────────────────────
+
 
 def test_response_includes_calories_estimate():
     """Mock responses should include calorie estimates."""
@@ -173,7 +204,9 @@ def test_response_includes_calories_estimate():
 
 def test_schema_validates_with_calories():
     """SuggestResponse should accept calories_estimate field."""
-    res = client.post("/v1/suggest", json={"ingredients": ["rice", "egg", "soy sauce", "garlic"]})
+    res = client.post(
+        "/v1/suggest", json={"ingredients": ["rice", "egg", "soy sauce", "garlic"]}
+    )
     assert res.status_code == 200
     parsed = SuggestResponse.model_validate(res.json())
     assert parsed.calories_estimate is not None
@@ -181,6 +214,7 @@ def test_schema_validates_with_calories():
 
 
 # ── Rejection field ─────────────────────────────────────────────
+
 
 def test_schema_accepts_rejection_field():
     """SuggestResponse should accept a rejection-only response."""
@@ -190,7 +224,11 @@ def test_schema_accepts_rejection_field():
         "prep_time_minutes": 0,
         "steps": [],
         "why_this_works": [],
-        "upgrade_ladder": {"pantry_upgrade": [], "if_you_have": [], "one_pound_shop": None},
+        "upgrade_ladder": {
+            "pantry_upgrade": [],
+            "if_you_have": [],
+            "one_pound_shop": None,
+        },
         "pantry_used": [],
         "notes": [],
         "safety": {"assumptions": [], "missing_ingredients": [], "disclaimer": ""},
@@ -210,6 +248,7 @@ def test_existing_responses_have_no_rejection():
 
 # ── Health endpoint ──────────────────────────────────────────────
 
+
 def test_health_returns_ok():
     """GET /health should return 200 with status field."""
     res = client.get("/health")
@@ -220,6 +259,7 @@ def test_health_returns_ok():
 
 
 # ── CORS headers ─────────────────────────────────────────────────
+
 
 def test_cors_headers_present():
     """OPTIONS preflight should return CORS headers for allowed origin."""
@@ -235,6 +275,7 @@ def test_cors_headers_present():
 
 # ── Edge cases ───────────────────────────────────────────────────
 
+
 def test_oversized_ingredients_list_rejected():
     """More than 50 ingredients should be rejected by schema validation."""
     ingredients = [f"item_{i}" for i in range(100)]
@@ -244,9 +285,12 @@ def test_oversized_ingredients_list_rejected():
 
 def test_special_characters_in_ingredients():
     """Input with special characters should not cause errors."""
-    res = client.post("/v1/suggest", json={
-        "ingredients": ["<script>alert(1)</script>", "onion & garlic"],
-    })
+    res = client.post(
+        "/v1/suggest",
+        json={
+            "ingredients": ["<script>alert(1)</script>", "onion & garlic"],
+        },
+    )
     assert res.status_code == 200
     data = res.json()
     SuggestResponse.model_validate(data)
@@ -254,36 +298,62 @@ def test_special_characters_in_ingredients():
 
 # ── Community tracking ────────────────────────────────────────────
 
+
 def test_suggest_returns_community_stats():
     """Suggest response should include community stats."""
     res = client.post("/v1/suggest", json={"ingredients": ["maggi noodles", "onion"]})
     assert res.status_code == 200
     data = res.json()
     assert "community" in data
-    assert data["community"]["combo_count"] >= 1
+    assert data["community"]["cooked_count"] >= 0
     assert isinstance(data["community"]["feedback_breakdown"], dict)
     assert isinstance(data["community"]["total_feedback"], int)
 
 
-def test_combo_count_increments():
-    """Same ingredient combo should increment combo_count."""
+def test_generations_do_not_inflate_cooked_count():
+    """Generating (or regenerating) the same combo must not count as cooking it."""
     ingredients = ["unique_test_a", "unique_test_b"]
     res1 = client.post("/v1/suggest", json={"ingredients": ingredients})
-    count1 = res1.json()["community"]["combo_count"]
-    res2 = client.post("/v1/suggest", json={"ingredients": ingredients})
-    count2 = res2.json()["community"]["combo_count"]
-    assert count2 == count1 + 1
+    res2 = client.post("/v1/suggest", json={"ingredients": ingredients, "variation": 1})
+    assert res1.json()["community"]["cooked_count"] == 0
+    assert res2.json()["community"]["cooked_count"] == 0
+
+
+def test_cooked_endpoint_increments():
+    ingredients = ["cooked_item_a", "cooked_item_b"]
+    client.post("/v1/suggest", json={"ingredients": ingredients})
+    sig = ",".join(sorted(ingredients)) + "|none"
+    assert (
+        client.post("/v1/cooked", json={"combo_signature": sig}).json()["cooked_count"]
+        == 1
+    )
+    assert (
+        client.post("/v1/cooked", json={"combo_signature": sig}).json()["cooked_count"]
+        == 2
+    )
+    res = client.post("/v1/suggest", json={"ingredients": ingredients})
+    assert res.json()["community"]["cooked_count"] == 2
+
+
+def test_cooked_unknown_combo_returns_404():
+    res = client.post("/v1/cooked", json={"combo_signature": "never_x,never_y|none"})
+    assert res.status_code == 404
 
 
 def test_feedback_endpoint_returns_breakdown():
     """POST /v1/feedback should accept feedback and return breakdown."""
     # First generate a combo so it exists
-    client.post("/v1/suggest", json={"ingredients": ["feedback_item_a", "feedback_item_b"]})
+    client.post(
+        "/v1/suggest", json={"ingredients": ["feedback_item_a", "feedback_item_b"]}
+    )
     sig = ",".join(sorted(["feedback_item_a", "feedback_item_b"])) + "|none"
-    res = client.post("/v1/feedback", json={
-        "combo_signature": sig,
-        "feedback_type": "perfect",
-    })
+    res = client.post(
+        "/v1/feedback",
+        json={
+            "combo_signature": sig,
+            "feedback_type": "perfect",
+        },
+    )
     assert res.status_code == 200
     data = res.json()
     assert data["status"] == "ok"
@@ -293,40 +363,66 @@ def test_feedback_endpoint_returns_breakdown():
 
 def test_feedback_unknown_combo_returns_404():
     """Feedback for a combo that was never searched should return 404."""
-    res = client.post("/v1/feedback", json={
-        "combo_signature": "never_searched_x,never_searched_y|none",
-        "feedback_type": "perfect",
-    })
+    res = client.post(
+        "/v1/feedback",
+        json={
+            "combo_signature": "never_searched_x,never_searched_y|none",
+            "feedback_type": "perfect",
+        },
+    )
     assert res.status_code == 404
 
 
 # ── Rate limiting ────────────────────────────────────────────────
 
+
 def test_rate_limit_returns_429():
     """Exceeding rate limit should return 429."""
-    import spice.rate_limit as rl
-    from spice.rate_limit import _store, _lock
+    from spice.rate_limit import suggest_limiter
 
-    # Temporarily set a very low limit
-    original_max = rl._MAX_REQUESTS
-    rl._MAX_REQUESTS = 2
-
-    # Clear state for the test IP
-    with _lock:
-        _store.pop("testclient", None)
-
+    original_max = suggest_limiter.max_requests
+    suggest_limiter.max_requests = 2
+    suggest_limiter.reset()
     try:
         client.post("/v1/suggest", json={"ingredients": ["rice", "egg"]})
-        client.post("/v1/suggest", json={"ingredients": ["rice", "egg"]})
+        client.post("/v1/suggest/stream", json={"ingredients": ["rice", "egg"]})
         res = client.post("/v1/suggest", json={"ingredients": ["rice", "egg"]})
         assert res.status_code == 429
     finally:
-        rl._MAX_REQUESTS = original_max
-        with _lock:
-            _store.pop("testclient", None)
+        suggest_limiter.max_requests = original_max
+        suggest_limiter.reset()
+
+
+def test_feedback_is_rate_limited():
+    from spice.rate_limit import vote_limiter
+
+    client.post("/v1/suggest", json={"ingredients": ["vote_a", "vote_b"]})
+    sig = "vote_a,vote_b|none"
+    original_max = vote_limiter.max_requests
+    vote_limiter.max_requests = 1
+    vote_limiter.reset()
+    try:
+        assert (
+            client.post(
+                "/v1/feedback",
+                json={"combo_signature": sig, "feedback_type": "perfect"},
+            ).status_code
+            == 200
+        )
+        assert (
+            client.post(
+                "/v1/feedback",
+                json={"combo_signature": sig, "feedback_type": "perfect"},
+            ).status_code
+            == 429
+        )
+    finally:
+        vote_limiter.max_requests = original_max
+        vote_limiter.reset()
 
 
 # ── Concurrent requests ──────────────────────────────────────────
+
 
 def test_concurrent_requests():
     """Multiple parallel requests should all succeed."""
@@ -344,9 +440,12 @@ def test_concurrent_requests():
 
 # ── Input validation edge cases ──────────────────────────────────
 
+
 def test_ingredients_over_max_returns_422():
     """More than 50 ingredients should be rejected by schema."""
-    res = client.post("/v1/suggest", json={"ingredients": [f"item_{i}" for i in range(51)]})
+    res = client.post(
+        "/v1/suggest", json={"ingredients": [f"item_{i}" for i in range(51)]}
+    )
     assert res.status_code == 422
 
 
@@ -365,6 +464,7 @@ def test_unicode_ingredients():
 
 # ── Security headers ────────────────────────────────────────────
 
+
 def test_security_headers_present():
     """Responses should include security headers."""
     res = client.get("/health")
@@ -374,6 +474,7 @@ def test_security_headers_present():
 
 
 # ── CORS rejection ──────────────────────────────────────────────
+
 
 def test_cors_rejects_unknown_origin():
     """Requests from non-whitelisted origins should not get CORS headers."""
@@ -390,48 +491,61 @@ def test_cors_rejects_unknown_origin():
 
 # ── Feedback endpoint validation ────────────────────────────────
 
+
 def test_feedback_invalid_signature_format():
     """Feedback with malformed signature should be rejected."""
-    res = client.post("/v1/feedback", json={
-        "combo_signature": "not a valid format!!!",
-        "feedback_type": "perfect",
-    })
+    res = client.post(
+        "/v1/feedback",
+        json={
+            "combo_signature": "not a valid format!!!",
+            "feedback_type": "perfect",
+        },
+    )
     assert res.status_code == 422
 
 
 def test_feedback_invalid_type_rejected():
     """Feedback with invalid type should return 422."""
-    res = client.post("/v1/feedback", json={
-        "combo_signature": "a,b|none",
-        "feedback_type": "invalid_type",
-    })
+    res = client.post(
+        "/v1/feedback",
+        json={
+            "combo_signature": "a,b|none",
+            "feedback_type": "invalid_type",
+        },
+    )
     assert res.status_code == 422
 
 
 def test_feedback_empty_signature_rejected():
     """Empty combo_signature should be rejected."""
-    res = client.post("/v1/feedback", json={
-        "combo_signature": "",
-        "feedback_type": "perfect",
-    })
+    res = client.post(
+        "/v1/feedback",
+        json={
+            "combo_signature": "",
+            "feedback_type": "perfect",
+        },
+    )
     assert res.status_code == 422
 
 
 # ── Health endpoint ─────────────────────────────────────────────
+
 
 def test_health_includes_version():
     """Health endpoint should include the current version."""
     res = client.get("/health")
     assert res.status_code == 200
     data = res.json()
-    assert data["version"] == "0.7.0"
+    assert data["version"] == "0.8.0"
 
 
 # ── JSON parser robustness ─────────────────────────────────────
 
+
 def test_json_extract_handles_nested_fences():
     """Extract JSON even if model wraps in ```json fences."""
-    from spice.openai_service import _extract_json
+    from spice.llm import extract_json as _extract_json
+
     raw = '```json\n{"title": "test", "nested": {"a": 1}}\n```'
     result = _extract_json(raw)
     assert result["nested"]["a"] == 1
@@ -439,38 +553,36 @@ def test_json_extract_handles_nested_fences():
 
 def test_json_extract_raises_on_garbage():
     """Completely invalid input should raise."""
-    from spice.openai_service import _extract_json
+    from spice.llm import extract_json as _extract_json
+
     with pytest.raises(json.JSONDecodeError):
         _extract_json("This is not JSON at all")
 
 
 # ── IP extraction ───────────────────────────────────────────────
 
-def test_x_forwarded_for_uses_first_ip():
-    """Rate limiter should use first IP from X-Forwarded-For chain."""
-    import spice.rate_limit as rl
-    from spice.rate_limit import _store, _lock
 
-    original_max = rl._MAX_REQUESTS
-    rl._MAX_REQUESTS = 1
+def test_spoofed_x_forwarded_for_cannot_dodge_rate_limit():
+    """A client-supplied XFF entry must not create a fresh rate-limit bucket:
+    only the entry appended by our own edge proxy (rightmost) counts."""
+    from spice.rate_limit import suggest_limiter
 
-    with _lock:
-        _store.pop("1.2.3.4", None)
-
+    original_max = suggest_limiter.max_requests
+    suggest_limiter.max_requests = 1
+    suggest_limiter.reset()
     try:
         res1 = client.post(
             "/v1/suggest",
             json={"ingredients": ["rice"]},
-            headers={"X-Forwarded-For": "1.2.3.4, 10.0.0.1"},
+            headers={"X-Forwarded-For": "1.1.1.1, 10.0.0.1"},
         )
         assert res1.status_code == 200
         res2 = client.post(
             "/v1/suggest",
             json={"ingredients": ["rice"]},
-            headers={"X-Forwarded-For": "1.2.3.4, 10.0.0.1"},
+            headers={"X-Forwarded-For": "2.2.2.2, 10.0.0.1"},
         )
         assert res2.status_code == 429
     finally:
-        rl._MAX_REQUESTS = original_max
-        with _lock:
-            _store.pop("1.2.3.4", None)
+        suggest_limiter.max_requests = original_max
+        suggest_limiter.reset()
