@@ -14,13 +14,14 @@ interface Props {
 }
 
 export default function CommunityStats({ stats }: Props) {
-  if (stats.combo_count <= 1 && stats.total_feedback === 0) return null;
+  const cooked = stats.cooked_count ?? 0;
+  if (cooked === 0 && stats.total_feedback === 0) return null;
 
   return (
     <div className="mt-2 space-y-1.5">
-      {stats.combo_count > 1 && (
+      {cooked > 0 && (
         <p className="text-[10px] text-stone-400 dark:text-[rgba(245,245,245,0.4)]">
-          {stats.combo_count} {stats.combo_count === 2 ? "person has" : "people have"} cooked this combo
+          Cooked {cooked} {cooked === 1 ? "time" : "times"} by SPICE users
         </p>
       )}
       {stats.total_feedback > 0 && (

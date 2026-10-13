@@ -43,7 +43,7 @@ export default function FeedbackButtons({ signature, onCommunityUpdate }: Props)
                 combo_signature: signature,
                 feedback_type: opt.value,
               });
-              if (res.total_feedback > 0 && onCommunityUpdate) {
+              if (res && res.total_feedback > 0 && onCommunityUpdate) {
                 onCommunityUpdate(res.feedback_breakdown, res.total_feedback);
               }
             }}

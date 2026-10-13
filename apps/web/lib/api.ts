@@ -1,41 +1,137 @@
-import type { SuggestRequest, SuggestResponse, FeedbackRequest, FeedbackResponse } from "./types";
+import type {
+  CookedResponse,
+  FeedbackRequest,
+  FeedbackResponse,
+  FollowupRequest,
+  SuggestRequest,
+  SuggestResponse,
+} from "./types";
+import { parseSSE } from "./sse";
+import { normalizePlan } from "./plan";
 
-const API_TIMEOUT_MS = 30_000;
+const REQUEST_TIMEOUT_MS = 20_000;
+/** A stream is only abandoned if the server goes quiet this long. */
+const STREAM_IDLE_MS = 45_000;
 
-async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
+}
+
+/** Map a failed response to something a person can act on. */
+export function friendlyError(status: number, detail?: unknown): string {
+  // The API's own 429/503/504/502 details are already written for users.
+  if (typeof detail === "string" && detail.length < 200 && [429, 502, 503, 504].includes(status)) {
+    return detail;
+  }
+  if (status === 422) return "Some of those inputs are too long or not valid. Try shortening them.";
+  if (status === 429) return "You've cooked up a lot today. Try again a bit later.";
+  if (status === 503) return "SPICE is taking a break right now. Try again later.";
+  if (status === 504) return "SPICE took too long thinking about this one. Try again.";
+  if (status >= 500) return "Something went wrong on our side. Try again in a moment.";
+  return "Something went wrong. Try again.";
+}
+
+async function errorFrom(res: Response): Promise<ApiError> {
+  let detail: unknown;
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    detail = (await res.json()).detail;
+  } catch {
+    // non-JSON error body
+  }
+  return new ApiError(res.status, friendlyError(res.status, detail));
+}
+
+async function post(url: string, body: unknown, signal?: AbortSignal): Promise<Response> {
+  try {
+    return await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    throw new ApiError(0, "Couldn't reach SPICE. Check your connection and try again.");
+  }
+}
+
+export interface StreamHandlers {
+  onPartial?: (plan: SuggestResponse) => void;
+  signal?: AbortSignal;
+}
+
+/** POST and consume an SSE plan stream; resolves with the final plan. */
+async function streamPlan(url: string, body: unknown, { onPartial, signal }: StreamHandlers): Promise<SuggestResponse> {
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  signal?.addEventListener("abort", abort);
+  let idle = setTimeout(abort, STREAM_IDLE_MS);
+  const bump = () => {
+    clearTimeout(idle);
+    idle = setTimeout(abort, STREAM_IDLE_MS);
+  };
+
+  try {
+    const res = await post(url, body, controller.signal);
+    if (!res.ok || !res.body) throw await errorFrom(res);
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      bump();
+      buffer += decoder.decode(value, { stream: true });
+      const { events, rest } = parseSSE(buffer);
+      buffer = rest;
+      for (const ev of events) {
+        const data = JSON.parse(ev.data);
+        if (ev.event === "partial") onPartial?.(normalizePlan(data));
+        else if (ev.event === "final") return normalizePlan(data);
+        else if (ev.event === "error") throw new ApiError(data.status ?? 500, data.message ?? friendlyError(500));
+      }
+    }
+    throw new ApiError(502, "The connection closed before the plan finished. Try again.");
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
-      throw new Error("Request timed out. Please try again.");
+      if (signal?.aborted) throw err;
+      throw new ApiError(504, "SPICE went quiet for too long. Try again.");
     }
     throw err;
+  } finally {
+    clearTimeout(idle);
+    signal?.removeEventListener("abort", abort);
+  }
+}
+
+export function streamSuggestion(req: SuggestRequest, handlers: StreamHandlers = {}): Promise<SuggestResponse> {
+  return streamPlan("/api/v1/suggest/stream", req, handlers);
+}
+
+export function streamFollowup(req: FollowupRequest, handlers: StreamHandlers = {}): Promise<SuggestResponse> {
+  return streamPlan("/api/v1/followup/stream", req, handlers);
+}
+
+async function postSmall<T>(url: string, body: unknown): Promise<T | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const res = await post(url, body, controller.signal);
+    return res.ok ? ((await res.json()) as T) : null;
+  } catch {
+    return null;
   } finally {
     clearTimeout(timer);
   }
 }
 
-export async function fetchSuggestion(req: SuggestRequest): Promise<SuggestResponse> {
-  const res = await fetchWithTimeout("/api/v1/suggest", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(req),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API error ${res.status}: ${text}`);
-  }
-  return res.json();
+export function submitFeedback(req: FeedbackRequest): Promise<FeedbackResponse | null> {
+  return postSmall<FeedbackResponse>("/api/v1/feedback", req);
 }
 
-export async function submitFeedback(req: FeedbackRequest): Promise<FeedbackResponse> {
-  const res = await fetchWithTimeout("/api/v1/feedback", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(req),
-  });
-  if (!res.ok) return { status: "error", feedback_breakdown: {}, total_feedback: 0 };
-  return res.json();
+export function markCooked(comboSignature: string): Promise<CookedResponse | null> {
+  return postSmall<CookedResponse>("/api/v1/cooked", { combo_signature: comboSignature });
 }

@@ -2,12 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Step } from "@/lib/types";
-
-function fmtTime(s: number): string {
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${m}:${sec.toString().padStart(2, "0")}`;
-}
+import { fmtTime } from "@/lib/plan";
 
 function playDing() {
   try {
@@ -31,9 +26,11 @@ interface CookModeProps {
   steps: Step[];
   active: boolean;
   onActiveChange: (active: boolean) => void;
+  /** Called once when the timer runs to the end — counts as a real cook. */
+  onFinish?: () => void;
 }
 
-export default function CookMode({ steps, active, onActiveChange }: CookModeProps) {
+export default function CookMode({ steps, active, onActiveChange, onFinish }: CookModeProps) {
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
   const [muted, setMuted] = useState(true);
@@ -96,6 +93,11 @@ export default function CookMode({ steps, active, onActiveChange }: CookModeProp
     prevStepIdx.current = currentIdx;
   }, [currentIdx, active, muted]);
 
+  const done = active && totalTime > 0 && elapsed >= totalTime;
+  useEffect(() => {
+    if (done) onFinish?.();
+  }, [done, onFinish]);
+
   function skipToNextStep() {
     if (currentIdx < steps.length - 1) {
       setElapsed(steps[currentIdx + 1].t_seconds);
@@ -124,8 +126,6 @@ export default function CookMode({ steps, active, onActiveChange }: CookModeProp
       </button>
     );
   }
-
-  const done = elapsed >= totalTime;
 
   return (
     <div className="border border-stone-200 dark:border-white/10 rounded-xl p-4 bg-white dark:bg-surface-dark-card">

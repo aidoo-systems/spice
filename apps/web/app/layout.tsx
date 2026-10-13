@@ -50,7 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Prevent flash before intro overlay */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=sessionStorage.getItem("spice-intro-seen");if(!s){document.documentElement.classList.add("intro-pending")}}catch(e){}})()`,
+            __html: `(function(){try{var s=localStorage.getItem("spice-intro-seen");if(!s){document.documentElement.classList.add("intro-pending")}}catch(e){}})()`,
           }}
         />
         {process.env.NEXT_PUBLIC_UMAMI_URL && process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID && (

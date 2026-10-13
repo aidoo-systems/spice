@@ -77,6 +77,9 @@ export default function SavedRecipesPanel({ open, onClose, onLoad }: Props) {
         </div>
 
         <div className="p-4">
+          <p className="text-[11px] text-stone-400 dark:text-stone-500 mb-3">
+            Saved in this browser only — clearing site data removes them.
+          </p>
           {recipes.length === 0 ? (
             <p className="text-sm text-stone-400 dark:text-stone-500 text-center py-8">
               No saved recipes yet. Hit Save on any recipe to keep it here.

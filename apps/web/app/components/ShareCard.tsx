@@ -4,7 +4,6 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import type { SuggestResponse } from "@/lib/types";
 import { saveRecipe } from "@/lib/recipes";
-import { recordSave } from "@/lib/stats";
 
 interface Props {
   result: SuggestResponse;
@@ -87,7 +86,6 @@ export default function ShareCard({ result, ingredientCount, className }: Props)
 
   const handleSave = useCallback(() => {
     saveRecipe(result, ingredientCount);
-    recordSave();
     setSaved(true);
     toast.success("Recipe saved!");
   }, [result, ingredientCount]);

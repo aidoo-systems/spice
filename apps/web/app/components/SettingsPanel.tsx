@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { SkillMode } from "@/lib/types";
-import type { PersonalStats } from "@/lib/stats";
 import { CHANGELOG } from "@/lib/changelog";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -28,7 +27,6 @@ interface Props {
   onRemovePantryItem: (item: string) => void;
   skillMode: SkillMode;
   onSkillModeChange: (mode: SkillMode) => void;
-  stats?: PersonalStats;
 }
 
 export default function SettingsPanel({
@@ -42,7 +40,6 @@ export default function SettingsPanel({
   onRemovePantryItem,
   skillMode,
   onSkillModeChange,
-  stats,
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<"settings" | "changelog">("settings");
@@ -204,26 +201,12 @@ export default function SettingsPanel({
               </section>
             </div>
 
-            {stats && (stats.recipes_generated > 0 || stats.streak_days > 0) && (
-              <div className="px-4 pb-2">
-                <section>
-                  <label className="block text-sm font-medium mb-2">Your stats</label>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="text-xs px-3 py-1.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
-                      {stats.recipes_generated} {stats.recipes_generated === 1 ? "recipe" : "recipes"} generated
-                    </span>
-                    <span className="text-xs px-3 py-1.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
-                      {stats.recipes_saved} saved
-                    </span>
-                    {stats.streak_days > 0 && (
-                      <span className="text-xs px-3 py-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                        {stats.streak_days} day streak
-                      </span>
-                    )}
-                  </div>
-                </section>
-              </div>
-            )}
+            <div className="px-4 pb-4">
+              <p className="text-xs text-stone-400 dark:text-stone-500">
+                Your pantry, saved recipes and taste feedback live only in this browser. SPICE has no
+                accounts; the server only keeps anonymous ingredient-combo counts and ratings.
+              </p>
+            </div>
 
             <div className="p-4 border-t border-stone-200 dark:border-stone-700 mt-auto">
               <div className="flex items-center justify-between">

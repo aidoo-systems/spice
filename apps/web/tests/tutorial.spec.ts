@@ -1,23 +1,24 @@
 import { test, expect } from "@playwright/test";
 
-test("tutorial opens on first visit and can be skipped", async ({ page }) => {
+test("intro plays once and the tour is opt-in", async ({ page }) => {
   await page.addInitScript(() => {
-    sessionStorage.removeItem("spice-intro-seen");
-    localStorage.removeItem("spice-tutorial-seen");
+    if (!sessionStorage.getItem("test-booted")) {
+      sessionStorage.setItem("test-booted", "1");
+      localStorage.removeItem("spice-intro-seen");
+    }
   });
 
   await page.goto("/");
   await expect(page.getByTestId("intro-overlay")).toBeVisible();
   await page.getByTestId("intro-overlay").click();
   await expect(page.getByTestId("intro-overlay")).toBeHidden();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page.getByText("Step 1 of")).toBeVisible();
-
-  await page.getByRole("button", { name: "Skip" }).click();
+  // No tour forced on first-time visitors.
   await expect(page.getByRole("dialog")).toBeHidden();
 
-  const seen = await page.evaluate(() => localStorage.getItem("spice-tutorial-seen"));
-  expect(seen).toBe("true");
+  await page.getByRole("button", { name: /Take the 30-second tour/ }).click();
+  await expect(page.getByText("Step 1 of")).toBeVisible();
+  await page.getByRole("button", { name: "Skip" }).click();
+  await expect(page.getByRole("dialog")).toBeHidden();
 
   await page.reload();
   await expect(page.getByTestId("intro-overlay")).toBeHidden();
@@ -26,8 +27,7 @@ test("tutorial opens on first visit and can be skipped", async ({ page }) => {
 
 test("starting tutorial from settings closes the panel", async ({ page }) => {
   await page.addInitScript(() => {
-    sessionStorage.setItem("spice-intro-seen", "true");
-    localStorage.setItem("spice-tutorial-seen", "true");
+    localStorage.setItem("spice-intro-seen", "true");
   });
 
   await page.goto("/");

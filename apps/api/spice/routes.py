@@ -69,7 +69,7 @@ def _sse(job: engine.Job) -> StreamingResponse:
         body(),
         media_type="text/event-stream",
         # X-Accel-Buffering stops nginx from holding the stream until it ends.
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
     )
 
 
