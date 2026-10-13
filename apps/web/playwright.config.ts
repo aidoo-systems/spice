@@ -8,6 +8,10 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "on-first-retry",
+    // Use a preinstalled Chromium when the bundled one isn't downloaded.
+    ...(process.env.PLAYWRIGHT_CHROMIUM_PATH
+      ? { launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH } }
+      : {}),
   },
   webServer: {
     command: "npm run dev -- --hostname 127.0.0.1 --port 3737",

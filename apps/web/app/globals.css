@@ -3,160 +3,68 @@
 /* Tailwind v4: enable class-based dark mode */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Brand tokens */
+/*
+ * SPICE's look: one colour of its own (#e8562a, the chilli vermilion ai.doo
+ * gives SPICE on aidoo.biz) on flat, warm surfaces. No glows, gradients or
+ * coloured shadows; the plan is the loud part.
+ */
 @theme {
-  --color-brand-50: #fffbeb;
-  --color-brand-100: #fef3c7;
-  --color-brand-200: #fde68a;
-  --color-brand-300: #fcd34d;
-  --color-brand-400: #fbbf24;
-  --color-brand-500: #f59e0b;
-  --color-brand-600: #d97706;
-  --color-brand-700: #b45309;
-  --color-brand-800: #92400e;
-  --color-brand-900: #78350f;
+  /* SPICE vermilion. 500 is the brand colour; buttons put spice-950 text on it
+     (4.96:1). Text on light surfaces uses 600+ and on dark surfaces 300/400,
+     all above 4.5:1. */
+  --color-spice-50: #fdf2ed;
+  --color-spice-100: #fbe0d4;
+  --color-spice-200: #f6bea8;
+  --color-spice-300: #f19876;
+  --color-spice-400: #ec7650;
+  --color-spice-500: #e8562a;
+  --color-spice-600: #c8441c;
+  --color-spice-700: #a03617;
+  --color-spice-800: #7a2a14;
+  --color-spice-900: #5a2112;
+  --color-spice-950: #2a0f05;
 
-  /* Light surfaces — warmed */
+  /* Light surfaces — warm paper */
   --color-surface: #faf6f0;
   --color-surface-alt: #f3ede4;
   --color-surface-card: #ffffff;
 
-  /* Dark surfaces — warm near-black */
-  --color-surface-dark: #100f0d;
-  --color-surface-dark-alt: #1b1917;
-  --color-surface-dark-card: #1c1a17;
-  --color-surface-dark-input: #262320;
+  /* Dark surfaces — the same warm near-black family as aidoo.biz */
+  --color-surface-dark: #141312;
+  --color-surface-dark-alt: #1d1b1a;
+  --color-surface-dark-card: #1d1b1a;
+  --color-surface-dark-input: #242120;
 
-  /* Accent (chilli red, used sparingly) */
-  --color-accent: #c62828;
+  /* Dark-mode text and lines */
+  --color-ink: #f4f1ea;
+  --color-muted: #b3aca2;
+  --color-dim: #958e85;
+  --color-line: #34302d;
 
-  /* Display face (Space Grotesk via next/font) */
-  --font-display: var(--font-space), ui-sans-serif, system-ui, sans-serif;
+  /* Display face: Bricolage Grotesque, self-hosted (app/fonts) */
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Warm canvas: a soft amber glow behind the app, both themes. */
-.app-bg {
+body {
   background-color: var(--color-surface);
-  background-image:
-    radial-gradient(60rem 40rem at 50% -10%, rgba(245, 158, 11, 0.10), transparent 70%),
-    radial-gradient(40rem 30rem at 100% 0%, rgba(217, 119, 6, 0.06), transparent 70%);
-  background-attachment: fixed;
 }
 
-.dark .app-bg {
+.dark body {
   background-color: var(--color-surface-dark);
-  background-image:
-    radial-gradient(60rem 40rem at 50% -12%, rgba(245, 158, 11, 0.10), transparent 70%),
-    radial-gradient(44rem 32rem at 100% 0%, rgba(180, 83, 9, 0.10), transparent 72%);
-}
-
-/* Card elevation — warm-tinted shadow so cards lift off the canvas. */
-.card-elev {
-  box-shadow: 0 1px 2px rgba(120, 53, 15, 0.06), 0 6px 20px -8px rgba(120, 53, 15, 0.12);
-}
-
-.dark .card-elev {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -10px rgba(0, 0, 0, 0.6);
-}
-
-/* Smooth theme transition */
-html {
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-/* Hide app shell before intro overlay */
-.intro-pending .app-shell {
-  opacity: 0;
-  pointer-events: none;
 }
 
 /* Selection colour */
 ::selection {
-  background-color: var(--color-brand-200);
-  color: var(--color-brand-900);
+  background-color: var(--color-spice-200);
+  color: var(--color-spice-950);
 }
 
 .dark ::selection {
-  background-color: var(--color-brand-700);
-  color: var(--color-brand-100);
+  background-color: var(--color-spice-700);
+  color: var(--color-ink);
 }
 
-/* ── Animations ─────────────────────────────────────────────── */
-
-@keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes intro-wordmark-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes intro-wordmark-out {
-  from {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-4px) scale(0.98);
-  }
-}
-
-@keyframes intro-fly {
-  0% {
-    transform: translate(0, 0) scale(1);
-    opacity: 1;
-  }
-  65% {
-    transform: translate(var(--intro-dx, 0), var(--intro-dy, 0)) scale(0.85);
-    opacity: 1;
-  }
-  100% {
-    transform: translate(var(--intro-dx, 0), var(--intro-dy, 0)) scale(0.85);
-    opacity: 0;
-  }
-}
-
-@keyframes intro-overlay-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
-.animate-fade-in-up {
-  animation: fade-in-up 0.3s ease-out both;
-}
-
-/* Staggered delays for result sections */
-.animate-delay-1 { animation-delay: 0.05s; }
-.animate-delay-2 { animation-delay: 0.1s; }
-.animate-delay-3 { animation-delay: 0.15s; }
-.animate-delay-4 { animation-delay: 0.2s; }
-.animate-delay-5 { animation-delay: 0.25s; }
-.animate-delay-6 { animation-delay: 0.3s; }
-
-/* Respect reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .animate-fade-in-up {
-    animation: none;
-    opacity: 1;
-    transform: none;
-  }
+:focus-visible {
+  outline: 2px solid var(--color-spice-500);
+  outline-offset: 2px;
 }

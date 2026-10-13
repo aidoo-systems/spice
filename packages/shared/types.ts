@@ -1,4 +1,4 @@
-/** Shared TypeScript types for SPICE. */
+/** Shared TypeScript types for SPICE. Mirrors packages/shared/schemas.py. */
 
 export type FlavourMode =
   | "bold_spicy"
@@ -9,6 +9,8 @@ export type FlavourMode =
 
 export type SkillMode = "beginner" | "confident";
 
+export type SpiceLevel = "mild" | "medium" | "hot";
+
 export type FeedbackType = "too_salty" | "too_bland" | "perfect" | "needs_spice";
 
 // ── Request ──────────────────────────────────────────────────────
@@ -17,7 +19,7 @@ export interface Constraints {
   diet?: string;
   time_minutes?: number;
   equipment?: string[];
-  spice_level?: string;
+  spice_level?: SpiceLevel;
   flavour_mode?: FlavourMode;
   skill_mode?: SkillMode;
 }
@@ -27,6 +29,10 @@ export interface SuggestRequest {
   constraints?: Constraints;
   pantry_items?: string[];
   feedback_history?: FeedbackType[];
+  /** Regenerate counter; part of the cache key so each regenerate is new. */
+  variation?: number;
+  /** Titles already shown for these inputs, so the model avoids repeats. */
+  avoid_titles?: string[];
 }
 
 // ── Response ─────────────────────────────────────────────────────
@@ -34,7 +40,9 @@ export interface SuggestRequest {
 export interface Step {
   t_seconds: number;
   instruction: string;
-  tip?: string;
+  tip?: string | null;
+  /** Ingredients this step touches. */
+  uses?: string[];
 }
 
 export interface Upgrade {
@@ -63,28 +71,65 @@ export interface Safety {
 }
 
 export interface CommunityStats {
-  combo_count: number;
+  /** Times someone actually finished cooking this combo. */
+  cooked_count: number;
   feedback_breakdown: Record<string, number>;
   total_feedback: number;
 }
 
+export interface Grounding {
+  from_ingredients: string[];
+  from_pantry: string[];
+  staples: string[];
+  flagged_missing: string[];
+  unlisted: string[];
+}
+
+export interface Check {
+  name: string;
+  passed: boolean;
+  detail: string;
+}
+
+export interface GenerationMeta {
+  model: string;
+  mock: boolean;
+  cached: boolean;
+  latency_ms: number;
+  variation: number;
+  grounding: Grounding;
+  checks: Check[];
+}
+
 export interface SuggestResponse {
-  rejection?: string;
+  rejection?: string | null;
+  /** Follow-ups only: one-line reply to the user's question. */
+  answer?: string | null;
   title: string;
   prep_time_minutes: number;
-  calories_estimate?: number;
-  flavour_mode?: FlavourMode;
+  calories_estimate?: number | null;
+  flavour_mode?: FlavourMode | null;
   steps: Step[];
   why_this_works: string[];
   upgrade_ladder: UpgradeLadder;
-  minimal_rescue?: MinimalRescue;
+  minimal_rescue?: MinimalRescue | null;
   pantry_used: string[];
   notes: string[];
   safety: Safety;
-  community?: CommunityStats;
+  adjustments?: string[];
+  community?: CommunityStats | null;
+  meta?: GenerationMeta | null;
 }
 
-// ── Feedback ────────────────────────────────────────────────────
+// ── Follow-up ────────────────────────────────────────────────────
+
+export interface FollowupRequest {
+  request: SuggestRequest;
+  plan: SuggestResponse;
+  question: string;
+}
+
+// ── Feedback / cooked ────────────────────────────────────────────
 
 export interface FeedbackRequest {
   combo_signature: string;
@@ -95,4 +140,8 @@ export interface FeedbackResponse {
   status: string;
   feedback_breakdown: Record<string, number>;
   total_feedback: number;
+}
+
+export interface CookedResponse {
+  cooked_count: number;
 }

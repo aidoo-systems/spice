@@ -1,34 +1,31 @@
 """API routes for SPICE."""
 
-import asyncio
 import hashlib
+import json
 import logging
 import re
-import sys
-import os
-
-# Add packages to path so we can import shared schemas
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "packages"))
+from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import ValidationError
+from fastapi.responses import StreamingResponse
 from shared.schemas import (
-    SuggestRequest,
-    SuggestResponse,
-    CommunityStats,
+    CookedRequest,
+    CookedResponse,
     FeedbackRequest,
     FeedbackResponse,
+    FollowupRequest,
+    SuggestRequest,
+    SuggestResponse,
 )
 
+from spice import engine
 from spice.db import (
-    make_combo_hash,
-    record_combo,
     combo_exists,
-    record_feedback,
     get_feedback_breakdown,
+    record_cooked,
+    record_feedback,
 )
-from spice.rate_limit import check_rate_limit
-from spice.suggest import get_suggestion
+from spice.rate_limit import client_ip, suggest_limiter, vote_limiter
 
 logger = logging.getLogger("spice.routes")
 router = APIRouter()
@@ -36,63 +33,98 @@ router = APIRouter()
 # Combo signature format: "ingredient1,ingredient2,...|flavour_mode"
 _COMBO_SIG_RE = re.compile(r"^[\w\s,.\-]+\|[\w]+$")
 
+_RATE_LIMITED = (
+    "You've cooked up a lot today. Give SPICE a breather and try again later."
+)
+_BUDGET_SPENT = "SPICE has used up today's cooking budget. Come back tomorrow!"
 
-def _extract_client_ip(request: Request) -> str:
-    """Extract client IP, using only the first entry from X-Forwarded-For."""
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+
+def _limit(limiter, request: Request) -> None:
+    if not limiter.check(client_ip(request)):
+        raise HTTPException(status_code=429, detail=_RATE_LIMITED)
+
+
+def _prepare(fn, arg) -> engine.Job:
+    try:
+        return fn(arg)
+    except engine.BudgetExceeded:
+        raise HTTPException(status_code=503, detail=_BUDGET_SPENT)
+    except engine.GenerationError as exc:
+        raise HTTPException(status_code=exc.status, detail=exc.message)
+
+
+async def _json(job: engine.Job) -> SuggestResponse:
+    try:
+        return await engine.run_to_response(job)
+    except engine.GenerationError as exc:
+        raise HTTPException(status_code=exc.status, detail=exc.message)
+
+
+def _sse(job: engine.Job) -> StreamingResponse:
+    async def body() -> AsyncIterator[str]:
+        async for ev in engine.run(job):
+            yield f"event: {ev['event']}\ndata: {json.dumps(ev['data'], separators=(',', ':'))}\n\n"
+
+    return StreamingResponse(
+        body(),
+        media_type="text/event-stream",
+        # X-Accel-Buffering stops nginx from holding the stream until it ends.
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
+    )
+
+
+# ── Generation ───────────────────────────────────────────────────
 
 
 @router.post("/suggest", response_model=SuggestResponse)
 async def suggest(req: SuggestRequest, request: Request) -> SuggestResponse:
-    # Rate limit by client IP
-    client_ip = _extract_client_ip(request)
-    if not check_rate_limit(client_ip):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+    _limit(suggest_limiter, request)
+    return await _json(_prepare(engine.prepare_suggest, req))
 
-    try:
-        result = await get_suggestion(req)
 
-        # Non-food rejections aren't real combos — don't pollute the table.
-        if result.rejection:
-            return result
+@router.post("/suggest/stream")
+async def suggest_stream(req: SuggestRequest, request: Request) -> StreamingResponse:
+    """Server-sent events: `partial` snapshots while the model writes, then `final` or `error`."""
+    _limit(suggest_limiter, request)
+    return _sse(_prepare(engine.prepare_suggest, req))
 
-        # Track combo and attach community stats
-        sig, h = make_combo_hash(req.ingredients, req.constraints.flavour_mode)
-        count = record_combo(sig, h)
-        breakdown, total = get_feedback_breakdown(h)
-        result.community = CommunityStats(
-            combo_count=count,
-            feedback_breakdown=breakdown,
-            total_feedback=total,
-        )
 
-        return result
-    except ValidationError:
-        logger.exception("Validation error in suggestion response")
-        raise HTTPException(status_code=422, detail="Invalid response from suggestion engine")
-    except RuntimeError:
-        logger.exception("Configuration error")
-        raise HTTPException(status_code=503, detail="Service temporarily unavailable")
-    except asyncio.TimeoutError:
-        logger.exception("Suggestion timed out")
-        raise HTTPException(status_code=504, detail="Suggestion generation timed out")
-    except Exception:
-        logger.exception("Suggestion failed")
-        raise HTTPException(status_code=500, detail="Internal server error")
+@router.post("/followup", response_model=SuggestResponse)
+async def followup(req: FollowupRequest, request: Request) -> SuggestResponse:
+    _limit(suggest_limiter, request)
+    return await _json(_prepare(engine.prepare_followup, req))
+
+
+@router.post("/followup/stream")
+async def followup_stream(req: FollowupRequest, request: Request) -> StreamingResponse:
+    _limit(suggest_limiter, request)
+    return _sse(_prepare(engine.prepare_followup, req))
+
+
+# ── Community ────────────────────────────────────────────────────
+
+
+def _combo_hash(signature: str) -> str:
+    if not _COMBO_SIG_RE.match(signature):
+        raise HTTPException(status_code=422, detail="Invalid combo_signature format")
+    h = hashlib.sha256(signature.encode()).hexdigest()
+    if not combo_exists(h):
+        raise HTTPException(status_code=404, detail="Unknown combo")
+    return h
 
 
 @router.post("/feedback", response_model=FeedbackResponse)
-async def feedback(req: FeedbackRequest) -> FeedbackResponse:
-    # Validate signature format before hashing
-    if not _COMBO_SIG_RE.match(req.combo_signature):
-        raise HTTPException(status_code=422, detail="Invalid combo_signature format")
-
-    h = hashlib.sha256(req.combo_signature.encode()).hexdigest()
-    if not combo_exists(h):
-        raise HTTPException(status_code=404, detail="Unknown combo")
+async def feedback(req: FeedbackRequest, request: Request) -> FeedbackResponse:
+    _limit(vote_limiter, request)
+    h = _combo_hash(req.combo_signature)
     record_feedback(h, req.feedback_type)
     breakdown, total = get_feedback_breakdown(h)
     return FeedbackResponse(feedback_breakdown=breakdown, total_feedback=total)
+
+
+@router.post("/cooked", response_model=CookedResponse)
+async def cooked(req: CookedRequest, request: Request) -> CookedResponse:
+    """Count a real cook: called once when Cook Mode finishes or the user taps "I cooked this"."""
+    _limit(vote_limiter, request)
+    h = _combo_hash(req.combo_signature)
+    return CookedResponse(cooked_count=record_cooked(h))

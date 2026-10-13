@@ -27,3 +27,4 @@ Thumbs.db
 # Claude Code
 .claude/settings.local.json
 .claude/todo.md
+.ruff_cache/

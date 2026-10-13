@@ -1,294 +1,275 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { fetchSuggestion } from "@/lib/api";
+import { markCooked, streamFollowup, streamSuggestion } from "@/lib/api";
 import { getPantry, savePantry } from "@/lib/pantry";
 import { getFeedback, makeSignature } from "@/lib/feedback";
 import { generateChallenge } from "@/lib/challenges";
-import type { SuggestResponse, FlavourMode, SkillMode, CommunityStats as CommunityStatsType } from "@/lib/types";
-import { LOADING_MESSAGES } from "@/lib/loading-messages";
-import { getStats, recordGeneration, updateStreak, type PersonalStats } from "@/lib/stats";
+import { pickRandomPresets } from "@/lib/presets";
+import { DEFAULT_FORM, type FormState } from "@/lib/form";
+import { normalizePlan } from "@/lib/plan";
+import { SAMPLE_INGREDIENTS, SAMPLE_PLAN } from "@/lib/sample";
+import type { CommunityStats, SkillMode, SuggestRequest, SuggestResponse } from "@/lib/types";
 
-import CookMode from "./components/CookMode";
-import UpgradeLadderUI from "./components/UpgradeLadderUI";
-import WhyThisWorks from "./components/WhyThisWorks";
-import FeedbackButtons from "./components/FeedbackButtons";
-import ShareCard from "./components/ShareCard";
-import SettingsPanel from "./components/SettingsPanel";
+import TopBar from "./components/TopBar";
+import HomeView, { type Preset } from "./components/HomeView";
+import PlanView from "./components/PlanView";
+import PrefsSheet from "./components/PrefsSheet";
+import SettingsPanel, { type ThemeChoice } from "./components/SettingsPanel";
 import SavedRecipesPanel from "./components/SavedRecipesPanel";
-import IngredientAutocomplete from "./components/IngredientAutocomplete";
-import SkeletonLoader from "./components/SkeletonLoader";
-import CommunityStats from "./components/CommunityStats";
-import { Card, SectionHeader } from "./components/ui";
-import TutorialOverlay, { type TutorialStep } from "./components/TutorialOverlay";
-import LogoIntroOverlay from "./components/LogoIntroOverlay";
+import AboutDialog from "./components/AboutDialog";
+import { AidooWordmark } from "./components/AidooMark";
 
-// ── Constants ────────────────────────────────────────────────────
+const THEME_KEY = "spice-theme";
+const EMPTY_PLAN = normalizePlan({});
 
-const DIETS = ["any", "vegetarian", "vegan", "pescatarian"];
-const SPICE_LEVELS = ["mild", "medium", "hot"];
-const EQUIPMENT_OPTIONS = ["hob", "oven", "microwave", "air fryer", "pan", "wok", "pot"];
-const TIME_OPTIONS = [15, 30, 45, 60];
-
-const FLAVOUR_MODES: { value: FlavourMode; label: string }[] = [
-  { value: "bold_spicy", label: "Bold & Spicy" },
-  { value: "umami", label: "Savoury & Umami" },
-  { value: "comfort_rich", label: "Comfort & Rich" },
-  { value: "bright_fresh", label: "Bright & Fresh" },
-  { value: "clean_light", label: "Clean & Light" },
-];
-
-const PRESET_POOL = [
-  { label: "Maggi + Onion", ingredients: ["maggi noodles", "onion"] },
-  { label: "Rice + Frozen veg", ingredients: ["rice", "frozen peas", "soy sauce"] },
-  { label: "Pasta + Tinned tomatoes", ingredients: ["pasta", "tinned tomatoes", "garlic"] },
-  { label: "Egg + Toast", ingredients: ["egg", "bread"] },
-  { label: "Beans on Toast", ingredients: ["baked beans", "bread", "butter"] },
-  { label: "Ramen + Egg", ingredients: ["instant ramen", "egg", "spring onions"] },
-  { label: "Chickpea stir-fry", ingredients: ["tinned chickpeas", "onion", "garlic"] },
-  { label: "Omelette", ingredients: ["egg", "cheese", "butter"] },
-  { label: "Tuna pasta", ingredients: ["pasta", "tinned tuna", "sweetcorn"] },
-  { label: "Lentil soup", ingredients: ["red lentils", "onion", "tinned tomatoes"] },
-  { label: "Couscous salad", ingredients: ["couscous", "cucumber", "lemon"] },
-  { label: "Cheesy nachos", ingredients: ["tortilla chips", "cheese", "salsa"] },
-  { label: "Fried rice", ingredients: ["rice", "egg", "soy sauce"] },
-  { label: "Banana pancakes", ingredients: ["banana", "egg", "flour"] },
-  { label: "Garlic bread", ingredients: ["bread", "butter", "garlic"] },
-  { label: "Quesadilla", ingredients: ["tortilla", "cheese", "peppers"] },
-  { label: "Pesto pasta", ingredients: ["pasta", "pesto", "parmesan"] },
-  { label: "Stir-fry noodles", ingredients: ["noodles", "soy sauce", "frozen veg"] },
-  { label: "Tomato soup", ingredients: ["tinned tomatoes", "onion", "stock cube"] },
-  { label: "Jacket potato", ingredients: ["potato", "cheese", "baked beans"] },
-  { label: "Sardines on toast", ingredients: ["tinned sardines", "bread", "lemon"] },
-  { label: "Dal", ingredients: ["red lentils", "onion", "garlic", "tinned tomatoes"] },
-  { label: "Mushroom toast", ingredients: ["mushrooms", "bread", "garlic", "butter"] },
-  { label: "Veggie wrap", ingredients: ["tortilla", "lettuce", "cucumber", "hummus"] },
-  { label: "Spam + Rice", ingredients: ["spam", "rice", "egg"] },
-];
-
-function pickRandomPresets(count: number) {
-  const shuffled = [...PRESET_POOL].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
-}
-
-function fmtTime(s: number): string {
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${m}:${sec.toString().padStart(2, "0")}`;
-}
-
-// ── Dark mode hook ──────────────────────────────────────────────
-
-function useDarkMode() {
-  const [dark, setDark] = useState(true);
+/** Light/dark follows the device unless the person picks one in Settings. */
+function useTheme() {
+  const [choice, setChoice] = useState<ThemeChoice>("system");
 
   useEffect(() => {
-    setDark(document.documentElement.classList.contains("dark"));
+    try {
+      const stored = localStorage.getItem(THEME_KEY);
+      if (stored === "light" || stored === "dark") setChoice(stored);
+    } catch {
+      // storage blocked: follow the device
+    }
   }, []);
 
-  function toggle() {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("spice-theme", next ? "dark" : "light");
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => {
+      const dark = choice === "dark" || (choice === "system" && mq.matches);
+      document.documentElement.classList.toggle("dark", dark);
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, [choice]);
+
+  function set(next: ThemeChoice) {
+    setChoice(next);
+    try {
+      if (next === "system") localStorage.removeItem(THEME_KEY);
+      else localStorage.setItem(THEME_KEY, next);
+    } catch {
+      // not persisted; still applies for this visit
+    }
   }
 
-  return { dark, toggle };
+  return { theme: choice, setTheme: set };
 }
 
-// ── Pill button helper ──────────────────────────────────────────
+const isAbort = (e: unknown) => e instanceof DOMException && e.name === "AbortError";
 
-function Pill({ active, onClick, children, accent }: {
-  active?: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  accent?: boolean;
-}) {
-  const base = "text-xs px-3 py-1.5 rounded-full border transition-colors duration-150 min-h-[36px]";
-  if (accent) {
-    return (
-      <button onClick={onClick} className={`${base} border-amber-400/50 dark:border-amber-500/40 text-amber-700 dark:text-amber-400 font-medium hover:bg-amber-50 dark:hover:bg-amber-900/20`}>
-        {children}
-      </button>
-    );
-  }
-  if (active) {
-    return (
-      <button onClick={onClick} className={`${base} bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/40 font-semibold`}>
-        {children}
-      </button>
-    );
-  }
-  return (
-    <button onClick={onClick} className={`${base} border-stone-300/70 dark:border-white/10 text-stone-500 dark:text-[rgba(245,245,245,0.65)] hover:text-stone-800 dark:hover:text-[#F5F5F5] hover:border-amber-400/50 dark:hover:border-amber-500/40`}>
-      {children}
-    </button>
-  );
-}
-
-// ── Page ─────────────────────────────────────────────────────────
+type View = "home" | "plan";
+type Source = "live" | "saved" | "sample";
 
 export default function Home() {
-  const { dark, toggle: toggleDark } = useDarkMode();
-
-  const ingredientsCardRef = useRef<HTMLDivElement>(null);
-  const presetsRef = useRef<HTMLDivElement>(null);
-  const preferencesCardRef = useRef<HTMLDivElement>(null);
-  const generateButtonRef = useRef<HTMLButtonElement>(null);
-  const resultsRef = useRef<HTMLDivElement>(null);
+  const { theme, setTheme } = useTheme();
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
-  const headerIRef = useRef<HTMLSpanElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  // Inputs
-  const [ingredients, setIngredients] = useState<string[]>([]);
-  const [input, setInput] = useState("");
-  const [diet, setDiet] = useState("any");
-  const [timeMinutes, setTimeMinutes] = useState(30);
-  const [equipment, setEquipment] = useState<string[]>(["hob", "pan"]);
-  const [spiceLevel, setSpiceLevel] = useState("medium");
-  const [flavourMode, setFlavourMode] = useState<FlavourMode>("umami");
+  // ── Inputs ──────────────────────────────────────────────────
+  const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+  const update = useCallback((patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch })), []);
   const [skillMode, setSkillMode] = useState<SkillMode>("beginner");
-
-  // Pantry
   const [pantry, setPantry] = useState<string[]>([]);
   const [pantryInput, setPantryInput] = useState("");
+  const [presets, setPresets] = useState<Preset[]>([]);
 
-  // Panels
+  // ── Panels ──────────────────────────────────────────────────
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [recipesOpen, setRecipesOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [prefsOpen, setPrefsOpen] = useState(false);
 
-  const [tutorialOpen, setTutorialOpen] = useState(false);
-  const [tutorialStepIndex, setTutorialStepIndex] = useState(0);
-  const [introOpen, setIntroOpen] = useState(false);
-  const [introComplete, setIntroComplete] = useState(false);
+  // ── Plan ────────────────────────────────────────────────────
+  const [view, setView] = useState<View>("home");
+  const [source, setSource] = useState<Source>("live");
+  const [plan, setPlan] = useState<SuggestResponse | null>(null);
+  const [community, setCommunity] = useState<CommunityStats | null>(null);
+  /** The request behind the plan on screen; null for saved recipes and the sample. */
+  const [lastRequest, setLastRequest] = useState<SuggestRequest | null>(null);
+  const [seenTitles, setSeenTitles] = useState<string[]>([]);
+  const [history, setHistory] = useState<SuggestResponse[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [streaming, setStreaming] = useState(false);
+  const [cooked, setCooked] = useState(false);
 
-  // Personal stats
-  const [personalStats, setPersonalStats] = useState<PersonalStats | null>(null);
-
-  // Random presets
-  const [visiblePresets, setVisiblePresets] = useState<typeof PRESET_POOL>([]);
-  useEffect(() => { setVisiblePresets(pickRandomPresets(4)); }, []);
-
-  // Result
-  const [result, setResult] = useState<SuggestResponse | null>(null);
-  const [communityStats, setCommunityStats] = useState<CommunityStatsType | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [cookModeActive, setCookModeActive] = useState(false);
-  const [editingInputs, setEditingInputs] = useState(false);
-  const resultHeadingRef = useRef<HTMLHeadingElement>(null);
-
-  // Loading message rotation
-  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
-  useEffect(() => {
-    if (!loading) return;
-    setLoadingMsgIdx(Math.floor(Math.random() * LOADING_MESSAGES.length));
-    const interval = setInterval(() => {
-      setLoadingMsgIdx((prev) => (prev + 1) % LOADING_MESSAGES.length);
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [loading]);
-
-  // Load pantry from localStorage
   useEffect(() => {
     setPantry(getPantry());
+    setPresets(pickRandomPresets(4));
+    return () => abortRef.current?.abort();
   }, []);
 
-  // Personal stats: update streak on mount, load stats
+  // The plan is its own screen, so the phone's back button returns home.
   useEffect(() => {
-    updateStreak();
-    setPersonalStats(getStats());
+    const onPop = (e: PopStateEvent) => setView(e.state?.spice === "plan" ? "plan" : "home");
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  function clearIntroPending() {
-    document.documentElement.classList.remove("intro-pending");
+  function showPlan() {
+    if (view !== "plan") window.history.pushState({ spice: "plan" }, "");
+    setView("plan");
+    window.scrollTo({ top: 0 });
   }
 
-  useEffect(() => {
-    const introSeen = sessionStorage.getItem("spice-intro-seen");
-    if (!introSeen) {
-      setIntroOpen(true);
+  function goHome() {
+    abortRef.current?.abort();
+    setBusy(false);
+    setStreaming(false);
+    if (window.history.state?.spice === "plan") window.history.back();
+    else setView("home");
+    window.scrollTo({ top: 0 });
+  }
+
+  function buildRequest(ingredients: string[], timeMinutes = form.timeMinutes): SuggestRequest {
+    return {
+      ingredients,
+      constraints: {
+        diet: form.diet === "any" ? undefined : form.diet,
+        time_minutes: timeMinutes,
+        equipment: form.equipment,
+        spice_level: form.spiceLevel,
+        flavour_mode: form.flavourMode,
+        skill_mode: skillMode,
+      },
+      pantry_items: pantry,
+      feedback_history: getFeedback(makeSignature(ingredients, form.flavourMode)),
+    };
+  }
+
+  /** Stream a plan in. On failure, put back whatever was on screen before. */
+  async function run(
+    start: (handlers: { onPartial: (p: SuggestResponse) => void; signal: AbortSignal }) => Promise<SuggestResponse>,
+    onDone: (final: SuggestResponse) => void,
+    { keepCommunity = false, previous = plan, onError }: { keepCommunity?: boolean; previous?: SuggestResponse | null; onError?: () => void } = {},
+  ) {
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    const previousCommunity = community;
+
+    setBusy(true);
+    if (!keepCommunity) setCommunity(null);
+
+    try {
+      const final = await start({
+        signal: ac.signal,
+        onPartial: (p) => {
+          setStreaming(true);
+          setPlan(p);
+        },
+      });
+      setPlan(final);
+      setCommunity(final.community ?? (keepCommunity ? previousCommunity : null));
+      setCooked(false);
+      onDone(final);
+      setTimeout(() => headingRef.current?.focus({ preventScroll: true }), 50);
+    } catch (e) {
+      if (isAbort(e)) return;
+      setPlan(previous);
+      setCommunity(previousCommunity);
+      onError?.();
+      toast.error(e instanceof Error ? e.message : "Something went wrong. Try again.");
+    } finally {
+      if (abortRef.current === ac) {
+        setBusy(false);
+        setStreaming(false);
+      }
+    }
+  }
+
+  function generate(ingredients = form.ingredients, timeMinutes = form.timeMinutes) {
+    if (ingredients.length === 0) {
+      toast.error("Add at least one ingredient first.");
       return;
     }
-    setIntroComplete(true);
-    clearIntroPending();
-  }, []);
-
-  useEffect(() => {
-    if (!introComplete) return;
-    const seen = localStorage.getItem("spice-tutorial-seen");
-    if (!seen) {
-      setTutorialStepIndex(0);
-      setTutorialOpen(true);
-    }
-  }, [introComplete]);
-
-  function markTutorialSeen() {
-    localStorage.setItem("spice-tutorial-seen", "true");
-  }
-
-  const tutorialSteps: TutorialStep[] = useMemo(
-    () => [
-      {
-        id: "ingredients",
-        title: "Add ingredients you have",
-        description: "Type what is in your kitchen and tap Add to build your list.",
-        targetRef: ingredientsCardRef,
+    const req = buildRequest(ingredients, timeMinutes);
+    const from = view;
+    const previous = from === "plan" ? plan : null;
+    setPlan(null);
+    setHistory([]);
+    setSource("live");
+    showPlan();
+    run(
+      (h) => streamSuggestion(req, h),
+      (final) => {
+        setLastRequest(req);
+        setSeenTitles(final.title ? [final.title] : []);
       },
-      {
-        id: "presets",
-        title: "Try presets or the challenge",
-        description: "Pick a quick preset or the Budget Challenge to get started fast.",
-        targetRef: presetsRef,
-      },
-      {
-        id: "preferences",
-        title: "Set flavour and preferences",
-        description: "Tune diet, time, spice, and equipment to match your mood.",
-        targetRef: preferencesCardRef,
-      },
-      {
-        id: "generate",
-        title: "Generate your plan",
-        description: "Ask SPICE what you can make and get a full step-by-step plan.",
-        targetRef: generateButtonRef,
-      },
-      {
-        id: "results",
-        title: "Your plan appears here",
-        description: "After you generate, this area fills with Cook Mode, steps, and upgrades.",
-        targetRef: resultsRef,
-      },
-      {
-        id: "pantry",
-        title: "Save pantry staples",
-        description: "Open Settings to save staples so SPICE uses them automatically.",
-        targetRef: settingsButtonRef,
-      },
-    ],
-    []
-  );
-
-  function addIngredient(value?: string) {
-    const trimmed = (value || input).trim().toLowerCase();
-    if (trimmed && !ingredients.includes(trimmed)) {
-      setIngredients([...ingredients, trimmed]);
-    }
-    if (!value) setInput("");
-  }
-
-  function removeIngredient(item: string) {
-    setIngredients(ingredients.filter((i) => i !== item));
-  }
-
-  function toggleEquipment(item: string) {
-    setEquipment((prev) =>
-      prev.includes(item) ? prev.filter((e) => e !== item) : [...prev, item]
+      { previous, onError: () => from === "home" && goHome() },
     );
   }
 
+  function regenerate() {
+    if (!lastRequest) return;
+    const req: SuggestRequest = {
+      ...lastRequest,
+      feedback_history: getFeedback(makeSignature(lastRequest.ingredients, lastRequest.constraints?.flavour_mode)),
+      variation: (lastRequest.variation ?? 0) + 1,
+      avoid_titles: seenTitles.slice(-5),
+    };
+    setHistory([]);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    run(
+      (h) => streamSuggestion(req, h),
+      (final) => {
+        setLastRequest(req);
+        setSeenTitles((t) => (final.title ? [...t, final.title] : t));
+      },
+    );
+  }
+
+  function ask(question: string) {
+    if (!plan || !lastRequest) return;
+    const current = plan;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    run(
+      (h) => streamFollowup({ request: lastRequest, plan: { ...current, meta: null, community: null }, question }, h),
+      () => setHistory((hist) => [...hist, current].slice(-10)),
+      { keepCommunity: true },
+    );
+  }
+
+  function undo() {
+    const prev = history[history.length - 1];
+    if (!prev) return;
+    setHistory((h) => h.slice(0, -1));
+    setPlan(prev);
+  }
+
+  function openStatic(p: SuggestResponse, from: Source) {
+    abortRef.current?.abort();
+    setPlan(p);
+    setCommunity(p.community ?? null);
+    setLastRequest(null);
+    setHistory([]);
+    setCooked(false);
+    setSource(from);
+    showPlan();
+  }
+
+  const signature = lastRequest
+    ? makeSignature(lastRequest.ingredients, lastRequest.constraints?.flavour_mode)
+    : makeSignature(form.ingredients, form.flavourMode);
+
+  const onCooked = useCallback(() => {
+    if (cooked) return;
+    setCooked(true);
+    if (!lastRequest) return;
+    toast.success("Nice. Logged as cooked.");
+    markCooked(signature).then((r) => {
+      if (r) setCommunity((c) => ({ feedback_breakdown: {}, total_feedback: 0, ...c, cooked_count: r.cooked_count }));
+    });
+  }, [cooked, lastRequest, signature]);
+
   function addPantryItem() {
-    const trimmed = pantryInput.trim().toLowerCase();
+    const trimmed = pantryInput.trim().toLowerCase().slice(0, 60);
     if (trimmed && !pantry.includes(trimmed)) {
       const next = [...pantry, trimmed];
       setPantry(next);
@@ -303,499 +284,91 @@ export default function Home() {
     savePantry(next);
   }
 
-  function applyPreset(preset: { ingredients: string[] }) {
-    setIngredients(preset.ingredients);
-    setResult(null);
-    setCommunityStats(null);
-  }
-
-  function applyChallenge() {
-    const c = generateChallenge();
-    setIngredients(c.ingredients);
-    setTimeMinutes(c.time_minutes);
-    setResult(null);
-    setCommunityStats(null);
-  }
-
-  async function handleSubmit() {
-    if (ingredients.length === 0) {
-      toast.error("Add at least one ingredient.");
-      return;
-    }
-    setLoading(true);
-    setResult(null);
-    setCommunityStats(null);
-    setCookModeActive(false);
-    setEditingInputs(false);
-
-    const sig = makeSignature(ingredients, flavourMode);
-    const feedbackHistory = getFeedback(sig);
-
-    try {
-      const res = await fetchSuggestion({
-        ingredients,
-        constraints: {
-          diet: diet === "any" ? undefined : diet,
-          time_minutes: timeMinutes,
-          equipment,
-          spice_level: spiceLevel,
-          flavour_mode: flavourMode,
-          skill_mode: skillMode,
-        },
-        pantry_items: pantry,
-        feedback_history: feedbackHistory,
-      });
-      setResult(res);
-      setCommunityStats(res.community ?? null);
-      recordGeneration();
-      setPersonalStats(getStats());
-      setTimeout(() => resultHeadingRef.current?.focus(), 100);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const feedbackSig = makeSignature(ingredients, flavourMode);
-  // After a plan is generated, fold the inputs into a compact summary so the
-  // results own the space; "Edit" re-expands the full controls.
-  const inputsCollapsed = !!result && !editingInputs;
+  const fromIngredients = source === "sample" ? SAMPLE_INGREDIENTS : lastRequest?.ingredients ?? (busy ? form.ingredients : []);
 
   return (
     <>
-    <div className="app-shell">
-    <main className="max-w-5xl mx-auto px-4 py-6 sm:py-10">
-      {/* Skip link */}
-      <a
-        href="#results"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 bg-amber-500 text-white px-3 py-2 rounded-lg"
-      >
-        Skip to results
-      </a>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 bg-spice-500 text-spice-950 px-3 py-2 rounded-lg">
+          Skip to content
+        </a>
 
-      {/* ── Top bar ──────────────────────────────────────────── */}
-      <div className="sticky top-0 z-40 -mx-4 px-4 py-3 mb-2 backdrop-blur-md bg-surface/80 dark:bg-surface-dark/80 border-b border-stone-200/50 dark:border-white/5">
-      <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight">
-            SP
-            <span
-              ref={headerIRef}
-              className="text-amber-500 dark:text-amber-400"
-              style={{ fontSize: "110%", lineHeight: 1 }}
-            >
-              I
-            </span>
-            CE
-          </h1>
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setRecipesOpen(true)}
-            className="p-2 rounded-lg text-stone-500 dark:text-[rgba(245,245,245,0.65)] hover:text-stone-800 dark:hover:text-[#F5F5F5] hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150"
-            aria-label="Saved recipes"
-          >
-            <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-            </svg>
-          </button>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            ref={settingsButtonRef}
-            className="p-2 rounded-lg text-stone-500 dark:text-[rgba(245,245,245,0.65)] hover:text-stone-800 dark:hover:text-[#F5F5F5] hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150"
-            aria-label="Settings"
-          >
-            <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </button>
-          <button
-            onClick={toggleDark}
-            className="p-2 rounded-lg text-stone-500 dark:text-[rgba(245,245,245,0.65)] hover:text-stone-800 dark:hover:text-[#F5F5F5] hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150"
-            aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            {dark ? (
-              <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m8.66-13.66l-.71.71M4.05 19.95l-.71.71M21 12h-1M4 12H3m16.66 7.66l-.71-.71M4.05 4.05l-.71-.71M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            ) : (
-              <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
-            )}
-          </button>
-        </div>
-      </div>
-      </div>
+        <TopBar
+          onHome={goHome}
+          onOpenRecipes={() => setRecipesOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
+          settingsButtonRef={settingsButtonRef}
+        />
 
-      {/* ── Card stack ───────────────────────────────────────── */}
-      {/* Two columns while composing; a single full-width stack once a plan exists. */}
-      <div className={inputsCollapsed ? "space-y-3" : "lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-4 lg:items-start"}>
-
-      {/* ── Left column: inputs ──────────────────────────────── */}
-      <div className={inputsCollapsed ? "" : "space-y-3 lg:sticky lg:top-16"}>
-
-        {inputsCollapsed ? (
-        /* Compact summary — inputs fold away once a plan exists */
-        <Card>
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3 className="text-[11px] font-semibold uppercase tracking-widest text-stone-500 dark:text-[rgba(245,245,245,0.65)] mb-2">Cooking with</h3>
-              <div className="flex flex-wrap gap-1.5">
-                {ingredients.map((item) => (
-                  <span key={item} className="bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 px-2.5 py-0.5 rounded-full text-xs">
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <button
-              onClick={() => setEditingInputs(true)}
-              className="shrink-0 text-xs px-3 py-1.5 rounded-lg border border-stone-300/70 dark:border-white/10 text-stone-600 dark:text-[rgba(245,245,245,0.7)] hover:border-amber-400/60 hover:text-amber-700 dark:hover:text-amber-300 transition-colors min-h-[36px]"
-            >
-              Edit
-            </button>
-          </div>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full mt-3 py-2.5 rounded-lg text-sm font-semibold border border-stone-300/70 dark:border-white/10 text-stone-700 dark:text-[#F5F5F5] hover:border-amber-400/60 hover:text-amber-700 dark:hover:text-amber-300 disabled:opacity-60 transition-colors"
-          >
-            {loading ? LOADING_MESSAGES[loadingMsgIdx] : "↻ Regenerate"}
-          </button>
-        </Card>
-        ) : (<>
-
-        {/* Card 1: Ingredients */}
-        <div ref={ingredientsCardRef}>
-        <Card>
-          <SectionHeader>Ingredients you have</SectionHeader>
-          <div className="flex gap-2">
-            <IngredientAutocomplete
-              value={input}
-              onChange={setInput}
-              onSelect={addIngredient}
+        <main id="main" className="pb-8">
+          {view === "home" ? (
+            <HomeView
+              form={form}
+              update={update}
+              presets={presets}
+              busy={busy}
+              onGenerate={(ings) => generate(ings)}
+              onSurprise={() => {
+                const c = generateChallenge();
+                update({ ingredients: c.ingredients, timeMinutes: c.time_minutes });
+                generate(c.ingredients, c.time_minutes);
+              }}
+              onOpenPrefs={() => setPrefsOpen(true)}
+              onOpenSample={() => openStatic(SAMPLE_PLAN, "sample")}
             />
-            <button
-              onClick={() => addIngredient()}
-              className="bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-amber-600 active:scale-[0.98] transition-all duration-150 shadow-sm shadow-amber-500/25"
-            >
-              Add
-            </button>
-          </div>
-
-          {/* Ingredient tags */}
-          {ingredients.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-3">
-              {ingredients.map((item) => (
-                <span
-                  key={item}
-                  className="bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 px-2.5 py-0.5 rounded-full text-xs flex items-center gap-1"
-                >
-                  {item}
-                  <button
-                    onClick={() => removeIngredient(item)}
-                    aria-label={`Remove ${item}`}
-                    className="text-amber-600 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-100 ml-0.5"
-                  >
-                    &times;
-                  </button>
-                </span>
-              ))}
-            </div>
+          ) : (
+            <PlanView
+              plan={plan ?? EMPTY_PLAN}
+              streaming={streaming || (busy && !plan)}
+              busy={busy}
+              fromIngredients={fromIngredients}
+              community={community}
+              onCommunityUpdate={setCommunity}
+              signature={signature}
+              cooked={cooked}
+              onCooked={onCooked}
+              headingRef={headingRef}
+              canFollowup={!!lastRequest}
+              onAsk={ask}
+              onRegenerate={regenerate}
+              canUndo={history.length > 0}
+              onUndo={undo}
+              onBack={goHome}
+              kicker={source === "sample" ? "A plan we made earlier" : source === "saved" ? "Saved plan" : undefined}
+            />
           )}
+        </main>
 
-          {/* Presets */}
-          <div ref={presetsRef} className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-stone-100 dark:border-white/5">
-            {visiblePresets.map((p) => (
-              <Pill key={p.label} onClick={() => applyPreset(p)}>{p.label}</Pill>
-            ))}
-            <Pill accent onClick={applyChallenge}>Budget Challenge</Pill>
-            {ingredients.length > 0 && (
-              <Pill onClick={() => { setIngredients([]); setResult(null); setCommunityStats(null); }}>Clear</Pill>
-            )}
-          </div>
-        </Card>
-        </div>
+        <footer className="mt-12 py-6 border-t border-stone-200 dark:border-line flex flex-wrap items-center justify-between gap-3 text-sm text-stone-600 dark:text-muted">
+          <span>
+            Made by{" "}
+            <a href="https://aidoo.biz" target="_blank" rel="noopener noreferrer" className="text-stone-900 dark:text-ink hover:opacity-80">
+              <AidooWordmark />
+            </a>
+          </span>
+          <nav className="flex flex-wrap gap-x-4 gap-y-1">
+            <button onClick={() => setAboutOpen(true)} className="underline underline-offset-4 hover:text-stone-900 dark:hover:text-ink">
+              About SPICE
+            </button>
+            <a href="https://aidoo.biz/privacy-spice/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4 hover:text-stone-900 dark:hover:text-ink">
+              Privacy
+            </a>
+            <a href="mailto:hello@aidoo.biz?subject=SPICE%20feedback" className="underline underline-offset-4 hover:text-stone-900 dark:hover:text-ink">
+              Feedback
+            </a>
+          </nav>
+        </footer>
+      </div>
 
-        {/* Card 2: Flavour & Constraints */}
-        <div ref={preferencesCardRef}>
-        <Card>
-          <SectionHeader>Flavour &amp; Preferences</SectionHeader>
+      <PrefsSheet open={prefsOpen} form={form} update={update} onClose={() => setPrefsOpen(false)} />
 
-          {/* Flavour modes */}
-          <div className="flex flex-wrap gap-1.5 mb-4">
-            {FLAVOUR_MODES.map((fm) => (
-              <Pill key={fm.value} active={flavourMode === fm.value} onClick={() => setFlavourMode(fm.value)}>
-                {fm.label}
-              </Pill>
-            ))}
-          </div>
+      <SavedRecipesPanel open={recipesOpen} onClose={() => setRecipesOpen(false)} onLoad={(r) => openStatic(r, "saved")} />
 
-          {/* Constraints rows */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[11px] font-medium uppercase tracking-wide text-stone-500 dark:text-[rgba(245,245,245,0.6)] mb-1.5">Diet</label>
-              <select
-                value={diet}
-                onChange={(e) => setDiet(e.target.value)}
-                className="w-full border border-stone-200 dark:border-white/10 bg-stone-50 dark:bg-surface-dark-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-              >
-                {DIETS.map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[11px] font-medium uppercase tracking-wide text-stone-500 dark:text-[rgba(245,245,245,0.6)] mb-1.5">Time</label>
-              <div className="flex flex-wrap gap-1.5">
-                {TIME_OPTIONS.map((t) => (
-                  <Pill key={t} active={timeMinutes === t} onClick={() => setTimeMinutes(t)}>
-                    {t} min
-                  </Pill>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="block text-[11px] font-medium uppercase tracking-wide text-stone-500 dark:text-[rgba(245,245,245,0.6)] mb-1.5">Spice level</label>
-              <select
-                value={spiceLevel}
-                onChange={(e) => setSpiceLevel(e.target.value)}
-                className="w-full border border-stone-200 dark:border-white/10 bg-stone-50 dark:bg-surface-dark-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-              >
-                {SPICE_LEVELS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[11px] font-medium uppercase tracking-wide text-stone-500 dark:text-[rgba(245,245,245,0.6)] mb-1.5">Equipment</label>
-              <div className="flex flex-wrap gap-1.5">
-                {EQUIPMENT_OPTIONS.map((eq) => (
-                  <Pill key={eq} active={equipment.includes(eq)} onClick={() => toggleEquipment(eq)}>
-                    {eq}
-                  </Pill>
-                ))}
-              </div>
-            </div>
-          </div>
-        </Card>
-        </div>
-
-        {/* Submit (desktop; mobile uses the sticky bar below) */}
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          ref={generateButtonRef}
-          className="hidden lg:block w-full bg-gradient-to-r from-amber-500 to-orange-600 text-white py-3.5 rounded-xl text-sm font-bold tracking-wide hover:from-amber-400 hover:to-orange-500 active:scale-[0.99] disabled:opacity-60 disabled:active:scale-100 transition-all duration-150 shadow-lg shadow-orange-600/25"
-        >
-          {loading ? LOADING_MESSAGES[loadingMsgIdx] : "What can I make?"}
-        </button>
-
-        </>)}
-      </div>{/* end left column */}
-
-      {/* ── Right column: results ────────────────────────────── */}
-      <div className="space-y-3 mt-3 lg:mt-0">
-
-        {/* Loading skeleton */}
-        {loading && (
-          <Card>
-            <SkeletonLoader />
-          </Card>
-        )}
-
-        {/* ── Results ─────────────────────────────────────────── */}
-        <div id="results" aria-live="polite" ref={resultsRef}>
-        {!loading && !result && (
-          <Card className="animate-fade-in-up">
-            <div className="flex flex-col items-center text-center py-10 px-4">
-              <div className="mb-4 grid place-items-center w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg shadow-orange-600/25">
-                <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.5 2 3 4 3 6a3 3 0 11-6 0c0-.8.2-1.5.5-2.2C8 8 7 10 7 12.5a5 5 0 1010 0c0-4-2.5-7-5-9.5z" />
-                </svg>
-              </div>
-              <h3 className="font-display text-lg font-bold text-stone-800 dark:text-[#F5F5F5]">
-                What&rsquo;s in your kitchen?
-              </h3>
-              <p className="text-sm text-stone-500 dark:text-[rgba(245,245,245,0.6)] mt-1.5 max-w-xs">
-                Add a few ingredients, pick a flavour, and hit
-                <span className="font-semibold text-amber-600 dark:text-amber-400"> What can I make?</span>
-                &nbsp;— your step-by-step plan lands right here.
-              </p>
-            </div>
-          </Card>
-        )}
-        {result && (
-          <div className="space-y-3">
-            {result.rejection ? (
-              <Card>
-                <div className="animate-fade-in-up text-center py-6">
-                  <p className="text-lg font-medium text-stone-600 dark:text-[#F5F5F5]">
-                    {result.rejection}
-                  </p>
-                  <p className="text-sm text-stone-500 dark:text-[rgba(245,245,245,0.65)] mt-2">
-                    Try adding some actual food ingredients.
-                  </p>
-                </div>
-              </Card>
-            ) : (<>
-
-            {/* Result header card */}
-            <Card className="animate-fade-in-up">
-              <h2 ref={resultHeadingRef} tabIndex={-1} className="font-display text-xl sm:text-2xl font-bold outline-none leading-tight">{result.title}</h2>
-              <div className="flex flex-wrap gap-1.5 mt-2.5">
-                {result.flavour_mode && (
-                  <span className="text-[10px] font-medium bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full">
-                    {FLAVOUR_MODES.find((fm) => fm.value === result.flavour_mode)?.label || result.flavour_mode}
-                  </span>
-                )}
-                <span className="text-[10px] bg-stone-100 dark:bg-white/10 text-stone-600 dark:text-[rgba(245,245,245,0.7)] px-2 py-0.5 rounded-full">
-                  ~{result.prep_time_minutes} min
-                </span>
-                <span className="text-[10px] bg-stone-100 dark:bg-white/10 text-stone-600 dark:text-[rgba(245,245,245,0.7)] px-2 py-0.5 rounded-full">
-                  {ingredients.length} ingredients
-                </span>
-                {result.calories_estimate && (
-                  <span className="text-[10px] bg-stone-100 dark:bg-white/10 text-stone-600 dark:text-[rgba(245,245,245,0.7)] px-2 py-0.5 rounded-full">
-                    ~{result.calories_estimate} cal
-                  </span>
-                )}
-              </div>
-
-              {result.pantry_used.length > 0 && (
-                <p className="text-xs text-stone-500 dark:text-[rgba(245,245,245,0.6)] mt-2">
-                  Using pantry staples: {result.pantry_used.join(", ")}
-                </p>
-              )}
-              {communityStats && <CommunityStats stats={communityStats} />}
-            </Card>
-
-            {/* Minimal rescue */}
-            {result.minimal_rescue?.enabled && (
-              <Card className="animate-fade-in-up animate-delay-1 border-amber-200 dark:border-amber-700/50">
-                <p className="font-medium text-amber-800 dark:text-amber-300 text-sm mb-2">
-                  {result.minimal_rescue.rescue_line}
-                </p>
-                {result.minimal_rescue.flavour_hacks.length > 0 && (
-                  <div className="mb-2">
-                    <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-1">Flavour Hacks</p>
-                    <ul className="space-y-0.5">
-                      {result.minimal_rescue.flavour_hacks.map((h, i) => (
-                        <li key={i} className="text-sm text-amber-700 dark:text-amber-300">{h}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {result.minimal_rescue.ask_for.length > 0 && (
-                  <p className="text-sm text-amber-700 dark:text-amber-300">
-                    If you have one more thing: <span className="font-medium">{result.minimal_rescue.ask_for.join(" or ")}</span>
-                  </p>
-                )}
-              </Card>
-            )}
-
-            {/* Cook Mode card */}
-            <Card className="animate-fade-in-up animate-delay-2">
-              <SectionHeader>Cook Mode</SectionHeader>
-              <CookMode steps={result.steps} active={cookModeActive} onActiveChange={setCookModeActive} />
-            </Card>
-
-            {/* Static steps (hidden when cook mode is active) */}
-            {!cookModeActive && (
-              <Card className="animate-fade-in-up animate-delay-3">
-                <SectionHeader>Steps</SectionHeader>
-                <ol className="space-y-2">
-                  {result.steps.map((step, i) => (
-                    <li key={i} className="flex gap-3">
-                      <span className="text-amber-600 dark:text-amber-400 font-mono text-xs min-w-[3rem] pt-0.5">
-                        {fmtTime(step.t_seconds)}
-                      </span>
-                      <div>
-                        <span className="text-sm">{step.instruction}</span>
-                        {step.tip && (
-                          <p className="text-xs text-stone-500 dark:text-[rgba(245,245,245,0.6)] mt-0.5">{step.tip}</p>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-
-                {/* Notes inline */}
-                {result.notes.length > 0 && (
-                  <div className="mt-4 pt-3 border-t border-stone-100 dark:border-white/5">
-                    <SectionHeader>Notes</SectionHeader>
-                    <ul className="space-y-1">
-                      {result.notes.map((n, i) => (
-                        <li key={i} className="text-sm text-stone-500 dark:text-[rgba(245,245,245,0.65)]">{n}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Safety disclaimer inline */}
-                {result.safety.missing_ingredients.length > 0 && (
-                  <p className="text-xs text-stone-500 dark:text-[rgba(245,245,245,0.55)] mt-3">
-                    Assumed available: {result.safety.missing_ingredients.join(", ")}.{" "}
-                    {result.safety.disclaimer}
-                  </p>
-                )}
-              </Card>
-            )}
-
-            {/* Why This Works */}
-            <Card className="animate-fade-in-up animate-delay-4">
-              <SectionHeader>Why This Works</SectionHeader>
-              <WhyThisWorks reasons={result.why_this_works} />
-            </Card>
-
-            {/* Upgrade Ladder */}
-            <Card className="animate-fade-in-up animate-delay-5">
-              <SectionHeader>Upgrade Ladder</SectionHeader>
-              <UpgradeLadderUI ladder={result.upgrade_ladder} />
-            </Card>
-
-            {/* Feedback + Share */}
-            <Card className="animate-fade-in-up animate-delay-6">
-              <div className="flex flex-wrap items-center gap-2">
-                <FeedbackButtons
-                  signature={feedbackSig}
-                  onCommunityUpdate={(breakdown, total) =>
-                    setCommunityStats((prev) => ({
-                      combo_count: prev?.combo_count ?? 0,
-                      feedback_breakdown: breakdown,
-                      total_feedback: total,
-                    }))
-                  }
-                />
-                <ShareCard result={result} ingredientCount={ingredients.length} className="ml-auto shrink-0" />
-              </div>
-            </Card>
-
-            </>)}
-          </div>
-        )}
-        </div>
-
-      </div>{/* end right column */}
-      </div>{/* end grid */}
-
-      {/* Saved recipes panel */}
-      <SavedRecipesPanel
-        open={recipesOpen}
-        onClose={() => setRecipesOpen(false)}
-        onLoad={(r) => { setResult(r); setCommunityStats(r.community ?? null); }}
-      />
-
-      {/* Settings panel */}
       <SettingsPanel
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        onOpenTutorial={() => {
-          setSettingsOpen(false);
-          setTutorialStepIndex(0);
-          setTutorialOpen(true);
-        }}
+        theme={theme}
+        onThemeChange={setTheme}
         pantry={pantry}
         pantryInput={pantryInput}
         onPantryInputChange={setPantryInput}
@@ -803,71 +376,9 @@ export default function Home() {
         onRemovePantryItem={removePantryItem}
         skillMode={skillMode}
         onSkillModeChange={setSkillMode}
-        stats={personalStats ?? undefined}
       />
 
-      <footer className="mt-8 py-4 text-center text-xs text-stone-500 dark:text-[rgba(245,245,245,0.5)]">
-        &copy; 2026{" "}
-        <a
-          href="https://aidoo.biz"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline hover:text-stone-600 dark:hover:text-[rgba(245,245,245,0.6)] transition-colors duration-150"
-        >
-          ai.doo
-        </a>
-        {" "}&middot;{" "}
-        <a
-          href="mailto:hello@aidoo.biz"
-          className="underline hover:text-stone-600 dark:hover:text-[rgba(245,245,245,0.6)] transition-colors duration-150"
-        >
-          Feedback
-        </a>
-      </footer>
-
-      {/* Spacer so the fixed mobile CTA never covers the footer */}
-      {!inputsCollapsed && <div className="h-20 lg:hidden" aria-hidden="true" />}
-    </main>
-
-    {/* Sticky mobile CTA — keeps the primary action reachable without scrolling */}
-    {!inputsCollapsed && (
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 px-4 py-3 bg-surface/90 dark:bg-surface-dark/90 backdrop-blur-md border-t border-stone-200/60 dark:border-white/10">
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-amber-500 to-orange-600 text-white py-3 rounded-xl text-sm font-bold tracking-wide disabled:opacity-60 shadow-lg shadow-orange-600/25"
-        >
-          {loading ? LOADING_MESSAGES[loadingMsgIdx] : "What can I make?"}
-        </button>
-      </div>
-    )}
-    </div>
-
-    <TutorialOverlay
-      open={tutorialOpen}
-      steps={tutorialSteps}
-      stepIndex={tutorialStepIndex}
-      onStepChange={setTutorialStepIndex}
-      onClose={() => {
-        markTutorialSeen();
-        setTutorialOpen(false);
-      }}
-      onComplete={() => {
-        markTutorialSeen();
-        setTutorialOpen(false);
-      }}
-    />
-
-    <LogoIntroOverlay
-      open={introOpen}
-      targetRef={headerIRef}
-      onComplete={() => {
-        sessionStorage.setItem("spice-intro-seen", "true");
-        setIntroOpen(false);
-        setIntroComplete(true);
-        clearIntroPending();
-      }}
-    />
+      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </>
   );
 }
