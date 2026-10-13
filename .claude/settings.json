@@ -30,7 +30,19 @@
       "Bash(node:*)",
       "Bash(PYTHONPATH=*:*)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(git worktree:*)",
+      "Bash(git switch:*)",
+      "Bash(./scripts/gates.sh:*)",
+      "Bash(bash scripts/gates.sh:*)",
+      "Bash(pip-audit:*)",
+      "Bash(codex review:*)",
+      "Bash(python3 C:/dev/repos/studio/tools/review.py:*)",
+      "Bash(python3 C:/dev/repos/studio/tools/sb.py:*)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)"
     ]
   },
   "hooks": {
