@@ -1,6 +1,7 @@
 "use client";
 
 import type { RefObject } from "react";
+import { AidooWordmark } from "./AidooMark";
 import { Icon } from "./icons";
 import { iconButton } from "./ui";
 
@@ -11,32 +12,24 @@ interface Props {
   onOpenSettings: () => void;
   onOpenAbout: () => void;
   settingsButtonRef: RefObject<HTMLButtonElement | null>;
-  headerIRef: RefObject<HTMLSpanElement | null>;
 }
 
-export default function TopBar({ dark, onToggleDark, onOpenRecipes, onOpenSettings, onOpenAbout, settingsButtonRef, headerIRef }: Props) {
+export default function TopBar({ dark, onToggleDark, onOpenRecipes, onOpenSettings, onOpenAbout, settingsButtonRef }: Props) {
   return (
-    <div className="sticky top-0 z-40 -mx-4 px-4 py-3 mb-2 backdrop-blur-md bg-surface/80 dark:bg-surface-dark/80 border-b border-stone-200/50 dark:border-white/5">
+    <div className="sticky top-0 z-40 -mx-4 px-4 py-3 mb-4 bg-surface dark:bg-surface-dark border-b border-stone-200 dark:border-line">
       <div className="flex items-center justify-between">
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-baseline gap-3">
           <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight">
-            SP
-            <span ref={headerIRef} className="text-amber-500 dark:text-amber-400" style={{ fontSize: "110%", lineHeight: 1 }}>
-              I
-            </span>
-            CE
+            SP<span className="text-spice-600 dark:text-spice-400">I</span>CE
           </h1>
           <button
             onClick={onOpenAbout}
-            className="hidden sm:inline text-[11px] text-stone-400 dark:text-[rgba(245,245,245,0.45)] hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+            className="text-sm text-stone-500 dark:text-muted hover:text-stone-900 dark:hover:text-ink underline-offset-4 hover:underline"
           >
-            an ai.doo demo
+            by <AidooWordmark />
           </button>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button onClick={onOpenAbout} className={iconButton} aria-label="About SPICE">
-            <Icon name="info" />
-          </button>
+        <div className="flex items-center gap-1">
           <button onClick={onOpenRecipes} className={iconButton} aria-label="Saved recipes">
             <Icon name="bookmark" />
           </button>

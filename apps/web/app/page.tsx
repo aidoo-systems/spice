@@ -18,11 +18,9 @@ import SavedRecipesPanel from "./components/SavedRecipesPanel";
 import SkeletonLoader from "./components/SkeletonLoader";
 import AboutDialog from "./components/AboutDialog";
 import TutorialOverlay, { type TutorialStep } from "./components/TutorialOverlay";
-import LogoIntroOverlay from "./components/LogoIntroOverlay";
 import { Icon } from "./components/icons";
+import { AidooWordmark } from "./components/AidooMark";
 import { Card } from "./components/ui";
-
-const INTRO_KEY = "spice-intro-seen";
 
 function useDarkMode() {
   const [dark, setDark] = useState(true);
@@ -51,7 +49,6 @@ export default function Home() {
   };
   const resultsRef = useRef<HTMLDivElement>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
-  const headerIRef = useRef<HTMLSpanElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -77,7 +74,6 @@ export default function Home() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [tutorialStepIndex, setTutorialStepIndex] = useState(0);
-  const [introOpen, setIntroOpen] = useState(false);
 
   // ── Result ──────────────────────────────────────────────────
   const [plan, setPlan] = useState<SuggestResponse | null>(null);
@@ -103,13 +99,7 @@ export default function Home() {
   useEffect(() => {
     setPantry(getPantry());
     setPresets(pickRandomPresets(4));
-    // The splash plays once per browser; the tour is opt-in (empty state / settings).
-    try {
-      if (!localStorage.getItem(INTRO_KEY)) setIntroOpen(true);
-      else document.documentElement.classList.remove("intro-pending");
-    } catch {
-      document.documentElement.classList.remove("intro-pending");
-    }
+    // The tour is opt-in (empty state / settings); nothing plays on arrival.
     return () => abortRef.current?.abort();
   }, []);
 
@@ -282,7 +272,7 @@ export default function Home() {
     <>
       <div className="app-shell">
         <main className="max-w-5xl mx-auto px-4 py-6 sm:py-10">
-          <a href="#results" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 bg-amber-500 text-white px-3 py-2 rounded-lg">
+          <a href="#results" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 bg-spice-500 text-spice-950 px-3 py-2 rounded-lg">
             Skip to results
           </a>
 
@@ -293,7 +283,6 @@ export default function Home() {
             onOpenSettings={() => setSettingsOpen(true)}
             onOpenAbout={() => setAboutOpen(true)}
             settingsButtonRef={settingsButtonRef}
-            headerIRef={headerIRef}
           />
 
           {/* Two columns while composing; a single full-width stack once a plan exists. */}
@@ -333,17 +322,15 @@ export default function Home() {
               )}
 
               {!busy && !plan && (
-                <Card className="animate-fade-in-up">
+                <Card className="">
                   <div className="flex flex-col items-center text-center py-10 px-4">
-                    <div className="mb-4 grid place-items-center w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg shadow-orange-600/25">
-                      <Icon name="flame" className="w-7 h-7 text-white" strokeWidth={1.8} />
-                    </div>
-                    <h3 className="font-display text-lg font-bold text-stone-800 dark:text-[#F5F5F5]">What&rsquo;s in your kitchen?</h3>
-                    <p className="text-sm text-stone-500 dark:text-[rgba(245,245,245,0.6)] mt-1.5 max-w-xs">
+                    <Icon name="flame" className="mb-3 w-9 h-9 text-spice-600 dark:text-spice-400" strokeWidth={1.6} />
+                    <h3 className="font-display text-lg font-bold text-stone-800 dark:text-ink">What&rsquo;s in your kitchen?</h3>
+                    <p className="text-sm text-stone-500 dark:text-muted mt-1.5 max-w-xs">
                       Add a few ingredients or tap a preset. SPICE writes a timed plan using only what you have, then you
                       can ask it to change anything.
                     </p>
-                    <button onClick={openTutorial} className="mt-4 text-xs text-amber-700 dark:text-amber-400 underline underline-offset-2 hover:text-amber-800">
+                    <button onClick={openTutorial} className="mt-4 text-xs text-spice-700 dark:text-spice-400 underline underline-offset-2 hover:text-spice-800">
                       New here? Take the 30-second tour
                     </button>
                   </div>
@@ -404,21 +391,21 @@ export default function Home() {
 
           <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
 
-          <footer className="mt-8 py-4 text-center text-xs text-stone-500 dark:text-[rgba(245,245,245,0.5)] space-x-1">
-            <span>
-              Built by{" "}
-              <a href="https://aidoo.biz" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-600 dark:hover:text-[rgba(245,245,245,0.6)]">
-                ai.doo
-              </a>
-            </span>
-            <span>&middot;</span>
-            <button onClick={() => setAboutOpen(true)} className="underline hover:text-stone-600 dark:hover:text-[rgba(245,245,245,0.6)]">
-              About this demo
-            </button>
-            <span>&middot;</span>
-            <a href="mailto:hello@aidoo.biz" className="underline hover:text-stone-600 dark:hover:text-[rgba(245,245,245,0.6)]">
-              Feedback
+          <footer className="mt-12 py-6 border-t border-stone-200 dark:border-line flex flex-wrap items-center justify-between gap-3 text-sm text-stone-600 dark:text-muted">
+            <a href="https://aidoo.biz" target="_blank" rel="noopener noreferrer" className="text-base text-stone-900 dark:text-ink hover:opacity-80">
+              <AidooWordmark />
             </a>
+            <nav className="flex flex-wrap gap-x-4 gap-y-1">
+              <button onClick={() => setAboutOpen(true)} className="underline underline-offset-4 hover:text-stone-900 dark:hover:text-ink">
+                About SPICE
+              </button>
+              <a href="https://aidoo.biz/privacy-spice/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4 hover:text-stone-900 dark:hover:text-ink">
+                Privacy
+              </a>
+              <a href="mailto:hello@aidoo.biz?subject=SPICE%20feedback" className="underline underline-offset-4 hover:text-stone-900 dark:hover:text-ink">
+                Feedback
+              </a>
+            </nav>
           </footer>
 
           {!inputsCollapsed && <div className="h-20 lg:hidden" aria-hidden="true" />}
@@ -426,11 +413,11 @@ export default function Home() {
 
         {/* Sticky mobile CTA */}
         {!inputsCollapsed && (
-          <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 px-4 py-3 bg-surface/90 dark:bg-surface-dark/90 backdrop-blur-md border-t border-stone-200/60 dark:border-white/10">
+          <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 px-4 py-3 bg-surface/90 dark:bg-surface-dark/90 border-t border-stone-200/60 dark:border-line">
             <button
               onClick={() => generate()}
               disabled={busy}
-              className="w-full bg-gradient-to-r from-amber-500 to-orange-600 text-white py-3 rounded-xl text-sm font-bold tracking-wide disabled:opacity-60 shadow-lg shadow-orange-600/25"
+              className="w-full bg-spice-500 text-spice-950 py-3 rounded-xl text-base font-semibold hover:bg-spice-400 transition-colors disabled:opacity-60"
             >
               {busy ? busyLabel : "What can I make?"}
             </button>
@@ -447,19 +434,6 @@ export default function Home() {
         onComplete={() => setTutorialOpen(false)}
       />
 
-      <LogoIntroOverlay
-        open={introOpen}
-        targetRef={headerIRef}
-        onComplete={() => {
-          try {
-            localStorage.setItem(INTRO_KEY, "true");
-          } catch {
-            // storage blocked — the splash will simply play again
-          }
-          setIntroOpen(false);
-          document.documentElement.classList.remove("intro-pending");
-        }}
-      />
     </>
   );
 }

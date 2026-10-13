@@ -116,27 +116,27 @@ export default function CookMode({ steps, active, onActiveChange, onFinish }: Co
     return (
       <button
         onClick={() => onActiveChange(true)}
-        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white py-3 rounded-lg text-sm font-bold tracking-wide hover:from-amber-400 hover:to-orange-500 active:scale-[0.99] transition-all duration-150 shadow-lg shadow-orange-600/25"
+        className="w-full flex items-center justify-center gap-2 bg-stone-900 text-surface dark:bg-ink dark:text-surface-dark hover:bg-black dark:hover:bg-white py-3 rounded-lg text-base font-semibold transition-all duration-150"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        Start Cooking Mode
+        Start cooking
       </button>
     );
   }
 
   return (
-    <div className="border border-stone-200 dark:border-white/10 rounded-xl p-4 bg-white dark:bg-surface-dark-card">
+    <div className="border border-stone-200 dark:border-line rounded-xl p-4 bg-white dark:bg-surface-dark-card">
       {/* Timer header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
-          <span role="timer" aria-label={`Elapsed time: ${fmtTime(elapsed)}`} className="text-2xl font-mono font-bold text-red-600 dark:text-red-400">
+          <span role="timer" aria-label={`Elapsed time: ${fmtTime(elapsed)}`} className="text-2xl font-mono font-bold text-spice-600 dark:text-spice-400">
             {fmtTime(elapsed)}
           </span>
-          <span className="text-sm text-stone-500 dark:text-stone-400">/ {fmtTime(totalTime)}</span>
-          <span className="text-xs text-stone-500 dark:text-stone-400 font-medium">
+          <span className="text-sm text-stone-500 dark:text-muted">/ {fmtTime(totalTime)}</span>
+          <span className="text-xs text-stone-500 dark:text-muted font-medium">
             Step {currentIdx + 1}/{steps.length}
           </span>
         </div>
@@ -145,7 +145,7 @@ export default function CookMode({ steps, active, onActiveChange, onFinish }: Co
           <button
             onClick={() => setMuted(!muted)}
             aria-label={muted ? "Unmute step notifications" : "Mute step notifications"}
-            className="text-xs px-2.5 py-1.5 rounded-lg border border-stone-200 dark:border-white/10 hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150 min-h-[36px]"
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-stone-200 dark:border-line hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150 min-h-[36px]"
           >
             {muted ? (
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -162,7 +162,7 @@ export default function CookMode({ steps, active, onActiveChange, onFinish }: Co
           <button
             onClick={toggleLargeText}
             aria-label={largeText ? "Normal text size" : "Large text size"}
-            className="text-xs px-2.5 py-1.5 rounded-lg border border-stone-200 dark:border-white/10 hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150 min-h-[36px] font-bold"
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-stone-200 dark:border-line hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150 min-h-[36px] font-bold"
           >
             {largeText ? "A" : "A+"}
           </button>
@@ -170,7 +170,7 @@ export default function CookMode({ steps, active, onActiveChange, onFinish }: Co
           {!done && currentIdx < steps.length - 1 && (
             <button
               onClick={skipToNextStep}
-              className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 dark:border-white/10 hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150 min-h-[36px]"
+              className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 dark:border-line hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150 min-h-[36px]"
             >
               Skip
             </button>
@@ -178,7 +178,7 @@ export default function CookMode({ steps, active, onActiveChange, onFinish }: Co
           {!done && (
             <button
               onClick={() => setPaused(!paused)}
-              className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 dark:border-white/10 hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150 min-h-[36px]"
+              className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 dark:border-line hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150 min-h-[36px]"
             >
               {paused ? "Resume" : "Pause"}
             </button>
@@ -190,7 +190,7 @@ export default function CookMode({ steps, active, onActiveChange, onFinish }: Co
               setElapsed(0);
               setPaused(false);
             }}
-            className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 dark:border-white/10 hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150 min-h-[36px]"
+            className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 dark:border-line hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150 min-h-[36px]"
           >
             Stop
           </button>
@@ -200,7 +200,7 @@ export default function CookMode({ steps, active, onActiveChange, onFinish }: Co
       {/* Progress bar */}
       <div className="h-1.5 bg-stone-100 dark:bg-white/10 rounded-full mb-4 overflow-hidden">
         <div
-          className="h-full bg-red-500 rounded-full transition-all duration-1000"
+          className="h-full bg-spice-500 rounded-full transition-all duration-1000"
           style={{ width: `${Math.min((elapsed / totalTime) * 100, 100)}%` }}
         />
       </div>
@@ -215,13 +215,13 @@ export default function CookMode({ steps, active, onActiveChange, onFinish }: Co
               key={i}
               className={`flex gap-3 p-2 rounded-lg transition-colors ${
                 isCurrent
-                  ? "bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/60"
+                  ? "bg-spice-50 dark:bg-spice-950/30 border border-spice-200 dark:border-spice-800/60"
                   : isPast
                   ? "opacity-50"
                   : ""
               }`}
             >
-              <span className={`font-mono min-w-[3.5rem] pt-0.5 ${textSize} ${isCurrent ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"}`}>
+              <span className={`font-mono min-w-[3.5rem] pt-0.5 ${textSize} ${isCurrent ? "text-spice-600 dark:text-spice-400" : "text-spice-600 dark:text-spice-400"}`}>
                 {fmtTime(step.t_seconds)}
               </span>
               <div className="flex-1">
@@ -229,11 +229,11 @@ export default function CookMode({ steps, active, onActiveChange, onFinish }: Co
                   {step.instruction}
                 </span>
                 {step.tip && (
-                  <p className={`text-stone-500 dark:text-stone-400 mt-0.5 ${largeText ? "text-sm" : "text-xs"}`}>{step.tip}</p>
+                  <p className={`text-stone-500 dark:text-muted mt-0.5 ${largeText ? "text-sm" : "text-xs"}`}>{step.tip}</p>
                 )}
               </div>
               {isCurrent && (
-                <span className="text-red-500 dark:text-red-400 text-xs font-bold self-center animate-pulse">
+                <span className="text-spice-500 dark:text-spice-400 text-xs font-bold self-center motion-safe:animate-pulse">
                   NOW
                 </span>
               )}

@@ -12,7 +12,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 const TYPE_COLORS: Record<string, string> = {
   added: "text-green-600 dark:text-green-400",
-  changed: "text-amber-600 dark:text-amber-400",
+  changed: "text-spice-600 dark:text-spice-400",
   fixed: "text-blue-600 dark:text-blue-400",
 };
 
@@ -72,17 +72,17 @@ export default function SettingsPanel({
       {/* Panel */}
       <div
         ref={panelRef}
-        className="relative w-full max-w-sm bg-white dark:bg-stone-900 border-l border-stone-200 dark:border-stone-700 shadow-xl overflow-y-auto flex flex-col"
+        className="relative w-full max-w-sm bg-white dark:bg-surface-dark-card border-l border-stone-200 dark:border-line shadow-xl overflow-y-auto flex flex-col"
         role="dialog"
         aria-label={view === "settings" ? "Settings" : "What's New"}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-stone-200 dark:border-stone-700">
+        <div className="flex items-center justify-between p-4 border-b border-stone-200 dark:border-line">
           <div className="flex items-center gap-2">
             {view === "changelog" && (
               <button
                 onClick={() => setView("settings")}
-                className="text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 min-w-[36px] min-h-[36px] flex items-center justify-center -ml-1"
+                className="text-stone-500 dark:text-muted hover:text-stone-800 dark:hover:text-stone-200 min-w-[36px] min-h-[36px] flex items-center justify-center -ml-1"
                 aria-label="Back to settings"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -96,7 +96,7 @@ export default function SettingsPanel({
           </div>
           <button
             onClick={onClose}
-            className="text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="text-stone-500 dark:text-muted hover:text-stone-800 dark:hover:text-stone-200 min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="Close"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -114,7 +114,7 @@ export default function SettingsPanel({
                 <div className="flex gap-2">
                   <button
                     onClick={() => onSkillModeChange("beginner")}
-                    className={`text-sm px-4 py-2 rounded-full border transition-colors ${
+                    className={`text-sm px-4 py-2 rounded-lg border transition-colors ${
                       skillMode === "beginner"
                         ? "bg-stone-800 dark:bg-stone-200 text-white dark:text-stone-900 border-stone-800 dark:border-stone-200"
                         : "border-stone-300 dark:border-stone-600 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800"
@@ -124,7 +124,7 @@ export default function SettingsPanel({
                   </button>
                   <button
                     onClick={() => onSkillModeChange("confident")}
-                    className={`text-sm px-4 py-2 rounded-full border transition-colors ${
+                    className={`text-sm px-4 py-2 rounded-lg border transition-colors ${
                       skillMode === "confident"
                         ? "bg-stone-800 dark:bg-stone-200 text-white dark:text-stone-900 border-stone-800 dark:border-stone-200"
                         : "border-stone-300 dark:border-stone-600 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800"
@@ -140,12 +140,12 @@ export default function SettingsPanel({
                 <label className="block text-sm font-medium mb-2">
                   Pantry staples ({pantry.length})
                 </label>
-                <p className="text-xs text-stone-400 dark:text-stone-500 mb-2">
+                <p className="text-xs text-stone-500 dark:text-dim mb-2">
                   Things you always have at home (oil, salt, etc.)
                 </p>
                 <div className="flex gap-2 mb-3">
                   <input
-                    className="flex-1 border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="flex-1 border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-spice-500"
                     placeholder="e.g. oil, salt, soy sauce"
                     value={pantryInput}
                     onChange={(e) => onPantryInputChange(e.target.value)}
@@ -167,19 +167,19 @@ export default function SettingsPanel({
                   {pantry.map((item) => (
                     <span
                       key={item}
-                      className="bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 px-2 py-0.5 rounded-full text-xs flex items-center gap-1"
+                      className="bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 px-2 py-0.5 rounded-md text-xs flex items-center gap-1"
                     >
                       {item}
                       <button
                         onClick={() => onRemovePantryItem(item)}
-                        className="text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 min-w-[20px] min-h-[20px] flex items-center justify-center"
+                        className="text-stone-500 dark:text-muted hover:text-stone-800 dark:hover:text-stone-100 min-w-[20px] min-h-[20px] flex items-center justify-center"
                       >
                         &times;
                       </button>
                     </span>
                   ))}
                   {pantry.length === 0 && (
-                    <span className="text-xs text-stone-400 dark:text-stone-500">
+                    <span className="text-xs text-stone-500 dark:text-dim">
                       No pantry items yet.
                     </span>
                   )}
@@ -189,12 +189,12 @@ export default function SettingsPanel({
               {/* Tutorial */}
               <section>
                 <label className="block text-sm font-medium mb-2">Tutorial</label>
-                <p className="text-xs text-stone-400 dark:text-stone-500 mb-2">
+                <p className="text-xs text-stone-500 dark:text-dim mb-2">
                   A quick guided tour for first-time users.
                 </p>
                 <button
                   onClick={onOpenTutorial}
-                  className="text-sm px-4 py-2 rounded-full border border-amber-400/60 dark:border-amber-500/60 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                  className="text-sm px-4 py-2 rounded-lg border border-spice-400/60 dark:border-spice-500/60 text-spice-700 dark:text-spice-300 hover:bg-spice-50 dark:hover:bg-spice-900/20 transition-colors"
                 >
                   Start tutorial
                 </button>
@@ -202,20 +202,20 @@ export default function SettingsPanel({
             </div>
 
             <div className="px-4 pb-4">
-              <p className="text-xs text-stone-400 dark:text-stone-500">
+              <p className="text-xs text-stone-500 dark:text-dim">
                 Your pantry, saved recipes and taste feedback live only in this browser. SPICE has no
                 accounts; the server only keeps anonymous ingredient-combo counts and ratings.
               </p>
             </div>
 
-            <div className="p-4 border-t border-stone-200 dark:border-stone-700 mt-auto">
+            <div className="p-4 border-t border-stone-200 dark:border-line mt-auto">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-stone-400 dark:text-stone-500">
+                <p className="text-xs text-stone-500 dark:text-dim">
                   Smart Pantry Intelligence &amp; Culinary Engine
                 </p>
                 <button
                   onClick={() => setView("changelog")}
-                  className="text-xs text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 underline transition-colors"
+                  className="text-xs text-stone-500 dark:text-dim hover:text-stone-600 dark:hover:text-stone-300 underline transition-colors"
                 >
                   What&apos;s New
                 </button>
@@ -228,14 +228,14 @@ export default function SettingsPanel({
               <section key={entry.version}>
                 <div className="flex items-baseline gap-2 mb-2">
                   <span className="text-sm font-bold">v{entry.version}</span>
-                  <span className="text-[10px] text-stone-400 dark:text-stone-500">{entry.date}</span>
+                  <span className="text-xs text-stone-500 dark:text-dim">{entry.date}</span>
                 </div>
                 {(["added", "changed", "fixed"] as const).map((type) => {
                   const items = entry.changes.filter((c) => c.type === type);
                   if (items.length === 0) return null;
                   return (
                     <div key={type} className="mb-1.5">
-                      <p className={`text-[10px] font-semibold uppercase tracking-widest mb-0.5 ${TYPE_COLORS[type]}`}>
+                      <p className={`text-xs font-semibold mb-0.5 ${TYPE_COLORS[type]}`}>
                         {TYPE_LABELS[type]}
                       </p>
                       <ul className="space-y-0.5">

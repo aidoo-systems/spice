@@ -28,7 +28,17 @@ All notable changes to SPICE are documented here.
 - `page.tsx` split into focused components; prompts split into system/suggest/follow-up templates
 - Docs (`CLAUDE.md`, README, INSTRUCTIONS) brought up to date; Makefile gains test/lint/evals targets
 
+### Changed (design)
+- SPICE now wears its own colour, chilli vermilion `#e8562a` (the colour of its card on aidoo.biz), with dark text on it; amber is gone
+- Flat, warm surfaces matching the ai.doo family; no background glow, gradients, coloured shadows, blurred header or fade-in motion
+- Headings set in Bricolage Grotesque (self-hosted, OFL), labels in sentence case instead of tracked capitals
+- One filled button per view; secondary actions are outlined buttons or underlined links
+- The plan's title card is solid vermilion; plan details read as a sentence instead of a row of chips
+- "by ai.doo" wordmark with the ball in the header and footer; About rewritten in the studio's voice with only claims that hold today, plus a privacy link
+- Contrast fixes: button text, small labels and secondary text now meet WCAG AA
+
 ### Removed
+- The intro splash animation
 - Personal stats and streaks
 - `combo_count` in `CommunityStats` (replaced by `cooked_count`)
 

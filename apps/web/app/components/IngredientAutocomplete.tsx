@@ -89,7 +89,7 @@ export default function IngredientAutocomplete({ value, onChange, onSelect }: Pr
   return (
     <div ref={wrapperRef} className="relative flex-1">
       <input
-        className="w-full border border-stone-200 dark:border-white/10 bg-stone-50 dark:bg-surface-dark-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+        className="w-full border border-stone-200 dark:border-line bg-stone-50 dark:bg-surface-dark-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-spice-500/50"
         placeholder="e.g. maggi noodles"
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -104,7 +104,7 @@ export default function IngredientAutocomplete({ value, onChange, onSelect }: Pr
       />
       {open && suggestions.length > 0 && (
         <ul
-          className="absolute z-10 top-full left-0 right-0 mt-1 bg-white dark:bg-surface-dark-input border border-stone-200 dark:border-white/10 rounded-lg shadow-lg overflow-hidden"
+          className="absolute z-10 top-full left-0 right-0 mt-1 bg-white dark:bg-surface-dark-input border border-stone-200 dark:border-line rounded-lg shadow-lg overflow-hidden"
           role="listbox"
         >
           {suggestions.map((item, i) => (
@@ -115,7 +115,7 @@ export default function IngredientAutocomplete({ value, onChange, onSelect }: Pr
               aria-selected={i === highlightIdx}
               className={`px-3 py-2 text-sm cursor-pointer transition-colors ${
                 i === highlightIdx
-                  ? "bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200"
+                  ? "bg-spice-100 dark:bg-spice-900/40 text-spice-800 dark:text-spice-200"
                   : "text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700"
               }`}
               onMouseDown={() => selectItem(item)}

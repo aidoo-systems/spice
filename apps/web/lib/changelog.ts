@@ -18,6 +18,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       { type: "changed", text: "\u201cTry a different dish\u201d always gives a new plan" },
       { type: "changed", text: "Presets cook in one tap; the tour is opt-in" },
       { type: "changed", text: "Clearer error messages" },
+      { type: "changed", text: "A new look: SPICE's own chilli colour, calmer and easier to read" },
       { type: "fixed", text: "Community counts no longer count regenerations" },
     ],
   },

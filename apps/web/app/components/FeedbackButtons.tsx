@@ -26,7 +26,7 @@ export default function FeedbackButtons({ signature, onCommunityUpdate }: Props)
 
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-stone-400 dark:text-[rgba(245,245,245,0.4)] mb-2">How was it?</p>
+      <p className="text-sm font-semibold text-stone-500 dark:text-dim mb-2">How was it?</p>
       <div className="flex flex-wrap gap-1.5">
         {OPTIONS.map((opt) => (
           <button
@@ -47,7 +47,7 @@ export default function FeedbackButtons({ signature, onCommunityUpdate }: Props)
                 onCommunityUpdate(res.feedback_breakdown, res.total_feedback);
               }
             }}
-            className="text-xs px-3 py-1.5 rounded-full border border-white/10 text-stone-500 dark:text-[rgba(245,245,245,0.5)] hover:text-stone-800 dark:hover:text-[#F5F5F5] hover:border-white/20 transition-colors duration-150 whitespace-nowrap disabled:opacity-50"
+            className="text-sm px-3 py-1.5 rounded-lg border border-stone-300 dark:border-line text-stone-500 dark:text-dim hover:text-stone-800 dark:hover:text-ink hover:border-stone-400 dark:hover:border-muted transition-colors duration-150 whitespace-nowrap disabled:opacity-50"
           >
             {opt.label}
           </button>

@@ -55,8 +55,8 @@ interface Props {
   };
 }
 
-const label = "block text-[11px] font-medium uppercase tracking-wide text-stone-500 dark:text-[rgba(245,245,245,0.6)] mb-1.5";
-const select = "w-full border border-stone-200 dark:border-white/10 bg-stone-50 dark:bg-surface-dark-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50";
+const label = "block text-xs font-medium text-stone-500 dark:text-muted mb-1.5";
+const select = "w-full border border-stone-200 dark:border-line bg-stone-50 dark:bg-surface-dark-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-spice-500/50";
 
 export default function InputsPanel({
   form, update, presets, busy, busyLabel, collapsed, planIngredients,
@@ -81,10 +81,10 @@ export default function InputsPanel({
       <Card>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="text-[11px] font-semibold uppercase tracking-widest text-stone-500 dark:text-[rgba(245,245,245,0.65)] mb-2">Cooking with</h3>
+            <h3 className="text-sm font-semibold text-stone-500 dark:text-muted mb-2">Cooking with</h3>
             <div className="flex flex-wrap gap-1.5">
               {planIngredients.map((item) => (
-                <span key={item} className="bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 px-2.5 py-0.5 rounded-full text-xs">
+                <span key={item} className="bg-spice-100 dark:bg-spice-500/15 text-spice-800 dark:text-spice-300 px-2.5 py-0.5 rounded-md text-xs">
                   {item}
                 </span>
               ))}
@@ -92,7 +92,7 @@ export default function InputsPanel({
           </div>
           <button
             onClick={onExpand}
-            className="shrink-0 text-xs px-3 py-1.5 rounded-lg border border-stone-300/70 dark:border-white/10 text-stone-600 dark:text-[rgba(245,245,245,0.7)] hover:border-amber-400/60 hover:text-amber-700 dark:hover:text-amber-300 transition-colors min-h-[36px]"
+            className="shrink-0 text-xs px-3 py-1.5 rounded-lg border border-stone-300/70 dark:border-line text-stone-600 dark:text-muted hover:border-spice-400/60 hover:text-spice-700 dark:hover:text-spice-300 transition-colors min-h-[36px]"
           >
             Edit
           </button>
@@ -100,7 +100,7 @@ export default function InputsPanel({
         <button
           onClick={onRegenerate}
           disabled={busy}
-          className="w-full mt-3 py-2.5 rounded-lg text-sm font-semibold border border-stone-300/70 dark:border-white/10 text-stone-700 dark:text-[#F5F5F5] hover:border-amber-400/60 hover:text-amber-700 dark:hover:text-amber-300 disabled:opacity-60 transition-colors"
+          className="w-full mt-3 py-2.5 rounded-lg text-sm font-semibold border border-stone-300/70 dark:border-line text-stone-700 dark:text-ink hover:border-spice-400/60 hover:text-spice-700 dark:hover:text-spice-300 disabled:opacity-60 transition-colors"
         >
           {busy ? busyLabel : "↻ Try a different dish"}
         </button>
@@ -117,7 +117,7 @@ export default function InputsPanel({
             <IngredientAutocomplete value={form.input} onChange={(input) => update({ input })} onSelect={addIngredient} />
             <button
               onClick={() => addIngredient()}
-              className="bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-amber-600 active:scale-[0.98] transition-all duration-150 shadow-sm shadow-amber-500/25"
+              className="px-4 py-2 rounded-lg text-sm font-semibold border border-stone-300 dark:border-line text-stone-800 dark:text-ink hover:border-stone-500 dark:hover:border-muted transition-colors"
             >
               Add
             </button>
@@ -126,12 +126,12 @@ export default function InputsPanel({
           {form.ingredients.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-3">
               {form.ingredients.map((item) => (
-                <span key={item} className="bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 px-2.5 py-0.5 rounded-full text-xs flex items-center gap-1">
+                <span key={item} className="bg-spice-100 dark:bg-spice-900/30 text-spice-800 dark:text-spice-200 px-2.5 py-0.5 rounded-md text-xs flex items-center gap-1">
                   {item}
                   <button
                     onClick={() => update({ ingredients: form.ingredients.filter((i) => i !== item) })}
                     aria-label={`Remove ${item}`}
-                    className="text-amber-600 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-100 ml-0.5"
+                    className="text-spice-600 dark:text-spice-400 hover:text-spice-900 dark:hover:text-spice-100 ml-0.5"
                   >
                     &times;
                   </button>
@@ -141,8 +141,8 @@ export default function InputsPanel({
           )}
 
           {/* One tap: presets fill the list and cook straight away. */}
-          <div ref={refs.presets} className="mt-3 pt-3 border-t border-stone-100 dark:border-white/5">
-            <p className="text-[11px] text-stone-400 dark:text-[rgba(245,245,245,0.45)] mb-1.5">Or try one in a tap:</p>
+          <div ref={refs.presets} className="mt-3 pt-3 border-t border-stone-100 dark:border-line/60">
+            <p className="text-xs text-stone-500 dark:text-dim mb-1.5">Or try one in a tap:</p>
             <div className="flex flex-wrap gap-1.5">
               {presets.map((p) => (
                 <Pill key={p.label} disabled={busy} onClick={() => { update({ ingredients: p.ingredients }); onGenerate(p.ingredients); }}>
@@ -158,7 +158,7 @@ export default function InputsPanel({
 
       <div ref={refs.preferences}>
         <Card>
-          <SectionHeader>Flavour &amp; Preferences</SectionHeader>
+          <SectionHeader>Flavour and preferences</SectionHeader>
           <div className="flex flex-wrap gap-1.5 mb-4">
             {FLAVOUR_MODES.map((fm) => (
               <Pill key={fm.value} active={form.flavourMode === fm.value} onClick={() => update({ flavourMode: fm.value })}>
@@ -205,7 +205,7 @@ export default function InputsPanel({
         onClick={() => onGenerate()}
         disabled={busy}
         ref={refs.generate}
-        className="hidden lg:block w-full bg-gradient-to-r from-amber-500 to-orange-600 text-white py-3.5 rounded-xl text-sm font-bold tracking-wide hover:from-amber-400 hover:to-orange-500 active:scale-[0.99] disabled:opacity-60 disabled:active:scale-100 transition-all duration-150 shadow-lg shadow-orange-600/25"
+        className="hidden lg:block w-full bg-spice-500 text-spice-950 py-3.5 rounded-xl text-base font-semibold hover:bg-spice-400 transition-colors disabled:opacity-60 disabled:active:scale-100 transition-all duration-150"
       >
         {busy ? busyLabel : "What can I make?"}
       </button>

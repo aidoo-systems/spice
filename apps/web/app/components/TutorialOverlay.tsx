@@ -234,7 +234,7 @@ export default function TutorialOverlay({
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
         {highlight && (
           <div
-            className={`absolute border-2 border-amber-400/70 dark:border-amber-500/60 rounded-xl shadow-[0_0_0_6px_rgba(245,158,11,0.12)] transition-opacity duration-200 ${
+            className={`absolute border-2 border-spice-400/70 dark:border-spice-500/60 rounded-xl transition-opacity duration-200 ${
               visible ? "opacity-100" : "opacity-0"
             }`}
             style={{
@@ -253,18 +253,18 @@ export default function TutorialOverlay({
         aria-modal="true"
         aria-labelledby={`tutorial-title-${step.id}`}
         aria-describedby={`tutorial-desc-${step.id}`}
-        className={`pointer-events-auto absolute bg-white dark:bg-surface-dark-card border border-stone-200 dark:border-white/10 rounded-xl shadow-xl p-4 sm:p-5 transition-all duration-200 ${
+        className={`pointer-events-auto absolute bg-white dark:bg-surface-dark-card border border-stone-200 dark:border-line rounded-xl shadow-xl p-4 sm:p-5 transition-all duration-200 ${
           visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
         }`}
         style={{ top: position.top, left: position.left, width: position.maxWidth }}
       >
         <div className="flex items-center justify-between">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400">
+          <p className="text-sm font-semibold text-spice-600 dark:text-spice-400">
             Step {stepIndex + 1} of {totalSteps}
           </p>
           <button
             onClick={onClose}
-            className="text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 min-w-[32px] min-h-[32px] flex items-center justify-center"
+            className="text-stone-500 dark:text-dim hover:text-stone-700 dark:hover:text-stone-300 min-w-[32px] min-h-[32px] flex items-center justify-center"
             aria-label="Close tutorial"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -284,28 +284,28 @@ export default function TutorialOverlay({
           <button
             onClick={() => onStepChange(Math.max(0, stepIndex - 1))}
             disabled={stepIndex === 0}
-            className="text-xs px-3 py-1.5 rounded-full border border-stone-200 dark:border-white/10 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 dark:border-line text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Back
           </button>
           {!isLast ? (
             <button
               onClick={() => onStepChange(Math.min(totalSteps - 1, stepIndex + 1))}
-              className="text-xs px-3 py-1.5 rounded-full bg-amber-500 text-white hover:bg-amber-600 transition-colors duration-150"
+              className="text-xs px-3 py-1.5 rounded-lg bg-spice-500 text-spice-950 hover:bg-spice-400 transition-colors duration-150"
             >
               Next
             </button>
           ) : (
             <button
               onClick={onComplete}
-              className="text-xs px-3 py-1.5 rounded-full bg-amber-500 text-white hover:bg-amber-600 transition-colors duration-150"
+              className="text-xs px-3 py-1.5 rounded-lg bg-spice-500 text-spice-950 hover:bg-spice-400 transition-colors duration-150"
             >
               Finish
             </button>
           )}
           <button
             onClick={onComplete}
-            className="ml-auto text-xs text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 underline"
+            className="ml-auto text-xs text-stone-500 dark:text-dim hover:text-stone-600 dark:hover:text-stone-300 underline"
           >
             Skip
           </button>

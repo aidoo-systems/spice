@@ -42,10 +42,6 @@ function fulfillSSE(route: Route, events: [string, unknown][]) {
   return route.fulfill({ status: 200, contentType: "text/event-stream", body: sse(events) });
 }
 
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem("spice-intro-seen", "true"));
-});
-
 test("a preset streams a checked plan, then a follow-up revises it", async ({ page }) => {
   const bodies: Record<string, unknown>[] = [];
   await page.route("**/api/v1/suggest/stream", async (route) => {
@@ -65,8 +61,8 @@ test("a preset streams a checked plan, then a follow-up revises it", async ({ pa
   await page.getByRole("button", { name: "Fried rice" }).or(page.getByRole("button", { name: "Budget Challenge" })).first().click();
 
   await expect(page.getByRole("heading", { level: 2, name: "Crispy egg fried rice", exact: true })).toBeVisible();
-  await expect(page.getByText("✓ Only your ingredients")).toBeVisible();
-  await expect(page.getByText("Cooked 3 times by SPICE users")).toBeVisible();
+  await expect(page.getByText(/Uses only what you have/)).toBeVisible();
+  await expect(page.getByText(/Cooked 3 times by SPICE users/)).toBeVisible();
 
   await page.getByText("How this was generated").click();
   await expect(page.getByText("2/2 checks passed")).toBeVisible();
@@ -85,7 +81,7 @@ test("a preset streams a checked plan, then a follow-up revises it", async ({ pa
 
   await page.getByRole("button", { name: "I cooked this" }).click();
   await expect(page.getByRole("button", { name: "✓ Cooked" })).toBeDisabled();
-  await expect(page.getByText("Cooked 4 times by SPICE users")).toBeVisible();
+  await expect(page.getByText(/Cooked 4 times by SPICE users/)).toBeVisible();
   expect(cookedCalls).toBe(1);
 });
 

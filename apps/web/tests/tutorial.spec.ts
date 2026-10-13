@@ -1,35 +1,17 @@
 import { test, expect } from "@playwright/test";
 
-test("intro plays once and the tour is opt-in", async ({ page }) => {
-  await page.addInitScript(() => {
-    if (!sessionStorage.getItem("test-booted")) {
-      sessionStorage.setItem("test-booted", "1");
-      localStorage.removeItem("spice-intro-seen");
-    }
-  });
-
+test("nothing plays on arrival and the tour is opt-in", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByTestId("intro-overlay")).toBeVisible();
-  await page.getByTestId("intro-overlay").click();
-  await expect(page.getByTestId("intro-overlay")).toBeHidden();
-  // No tour forced on first-time visitors.
   await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page.getByRole("button", { name: "What can I make?" }).first()).toBeVisible();
 
   await page.getByRole("button", { name: /Take the 30-second tour/ }).click();
   await expect(page.getByText("Step 1 of")).toBeVisible();
   await page.getByRole("button", { name: "Skip" }).click();
   await expect(page.getByRole("dialog")).toBeHidden();
-
-  await page.reload();
-  await expect(page.getByTestId("intro-overlay")).toBeHidden();
-  await expect(page.getByRole("dialog")).toBeHidden();
 });
 
 test("starting tutorial from settings closes the panel", async ({ page }) => {
-  await page.addInitScript(() => {
-    localStorage.setItem("spice-intro-seen", "true");
-  });
-
   await page.goto("/");
   await page.getByRole("button", { name: "Settings" }).click();
   await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();

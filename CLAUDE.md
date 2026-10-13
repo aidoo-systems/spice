@@ -67,7 +67,8 @@ spice/
 │   │   └── tests/
 │   └── web/                  # Next.js frontend
 │       ├── app/page.tsx      # state orchestration only
-│       ├── app/components/   # TopBar, InputsPanel, ResultView, GenerationDetails, FollowupBox, AboutDialog, …
+│       ├── app/components/   # TopBar, InputsPanel, ResultView, GenerationDetails, FollowupBox, AboutDialog, AidooMark, …
+│       ├── app/fonts/        # Bricolage Grotesque (OFL)
 │       ├── app/api/[...path]/route.ts  # streaming proxy to the API
 │       ├── lib/              # api.ts (SSE client), sse.ts, plan.ts, types.ts, …
 │       └── tests/            # Playwright specs
@@ -85,6 +86,17 @@ spice/
 - **Community numbers:** `cooked_count` only moves via `POST /v1/cooked`. `hit_count` is internal request analytics and must not be shown as "people cooked this".
 - **Shared types:** Pydantic models in `packages/shared/schemas.py` are mirrored in `packages/shared/types.ts` and `apps/web/lib/types.ts` (identical bodies).
 - **Combo signatures** (`normalize_ingredient` in db.py / `makeSignature` in lib/feedback.ts) must stay in lockstep.
+
+## Design
+
+SPICE is an ai.doo studio app. Its look follows aidoo.biz's (see the ai.doo repo's `docs/design/brand.md`, D-018 to D-020) without copying it:
+
+- **One colour:** SPICE vermilion `spice-500` `#e8562a` (its card colour on aidoo.biz). Text on it is `spice-950`, never white (white is 3.6:1). Text in that colour uses `spice-600+` on light and `spice-300/400` on dark. Amber is ai.doo's ball, not SPICE's; blue belongs to PIKA/VERA. Warnings use amber, success emerald.
+- **Flat and warm:** surfaces and text tokens live in `app/globals.css` (`surface-dark #141312`, `ink`, `muted`, `dim`, `line`). No glows, gradients, coloured shadows, blur or decorative motion; any motion is functional and `motion-safe:`.
+- **Type:** Bricolage Grotesque (`font-display`, self-hosted in `app/fonts`) for headings, Inter for body. Sentence case; no tracked uppercase labels. Nothing under 12px.
+- **One filled button per view** (vermilion to start, ink-filled for "Start cooking"); everything else is outlined or an underlined link.
+- **The ai.doo mark** is `AidooWordmark`/`Ball` in `components/AidooMark.tsx`; never type "ai.doo" with a full stop as a logo.
+- **Copy:** "we", plain, warm, a little dry; claim only what ships.
 
 ## Key Environment Variables
 

@@ -58,16 +58,16 @@ export default function SavedRecipesPanel({ open, onClose, onLoad }: Props) {
       {/* Panel */}
       <div
         ref={panelRef}
-        className="relative w-full max-w-sm bg-white dark:bg-stone-900 border-l border-stone-200 dark:border-stone-700 shadow-xl overflow-y-auto"
+        className="relative w-full max-w-sm bg-white dark:bg-surface-dark-card border-l border-stone-200 dark:border-line shadow-xl overflow-y-auto"
         role="dialog"
         aria-label="Saved recipes"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-stone-200 dark:border-stone-700">
+        <div className="flex items-center justify-between p-4 border-b border-stone-200 dark:border-line">
           <h2 className="font-bold text-lg">Saved Recipes ({recipes.length})</h2>
           <button
             onClick={onClose}
-            className="text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="text-stone-500 dark:text-muted hover:text-stone-800 dark:hover:text-stone-200 min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="Close saved recipes"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -77,11 +77,11 @@ export default function SavedRecipesPanel({ open, onClose, onLoad }: Props) {
         </div>
 
         <div className="p-4">
-          <p className="text-[11px] text-stone-400 dark:text-stone-500 mb-3">
+          <p className="text-xs text-stone-500 dark:text-dim mb-3">
             Saved in this browser only — clearing site data removes them.
           </p>
           {recipes.length === 0 ? (
-            <p className="text-sm text-stone-400 dark:text-stone-500 text-center py-8">
+            <p className="text-sm text-stone-500 dark:text-dim text-center py-8">
               No saved recipes yet. Hit Save on any recipe to keep it here.
             </p>
           ) : (
@@ -90,7 +90,7 @@ export default function SavedRecipesPanel({ open, onClose, onLoad }: Props) {
                 <li key={recipe.id}>
                   <button
                     onClick={() => { onLoad(recipe.result); onClose(); }}
-                    className="w-full text-left p-3 rounded-lg border border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors"
+                    className="w-full text-left p-3 rounded-lg border border-stone-200 dark:border-line hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="font-medium text-sm leading-tight line-clamp-2">
@@ -98,7 +98,7 @@ export default function SavedRecipesPanel({ open, onClose, onLoad }: Props) {
                       </h3>
                       <button
                         onClick={(e) => handleDelete(e, recipe.id)}
-                        className="text-stone-400 dark:text-stone-500 hover:text-red-500 dark:hover:text-red-400 shrink-0 min-w-[24px] min-h-[24px] flex items-center justify-center"
+                        className="text-stone-500 dark:text-dim hover:text-spice-500 dark:hover:text-spice-400 shrink-0 min-w-[24px] min-h-[24px] flex items-center justify-center"
                         aria-label={`Delete ${recipe.result.title}`}
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -107,15 +107,15 @@ export default function SavedRecipesPanel({ open, onClose, onLoad }: Props) {
                       </button>
                     </div>
                     <div className="flex flex-wrap gap-2 mt-1.5">
-                      <span className="text-xs text-stone-500 dark:text-stone-400">
+                      <span className="text-xs text-stone-500 dark:text-muted">
                         ~{recipe.result.prep_time_minutes} min
                       </span>
                       {recipe.result.calories_estimate && (
-                        <span className="text-xs text-stone-500 dark:text-stone-400">
+                        <span className="text-xs text-stone-500 dark:text-muted">
                           ~{recipe.result.calories_estimate} cal
                         </span>
                       )}
-                      <span className="text-xs text-stone-400 dark:text-stone-500 ml-auto">
+                      <span className="text-xs text-stone-500 dark:text-dim ml-auto">
                         {timeAgo(recipe.timestamp)}
                       </span>
                     </div>
