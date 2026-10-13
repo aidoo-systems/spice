@@ -26,8 +26,10 @@ v0.9.0 is live at spice.aidoo.biz and the owner has cooked one plan from it.
 
 1. Owner merges the P1.3 pull request (it deploys).
 2. Owner cooks one plan end to end on a phone from the live site (P1.2).
-3. The design items: the owner's notes and the designer review (P3.1), turned
-   into roadmap rows and built. The owner asked for these next, 2026-10-13.
+3. The design items, which the owner asked for next on 2026-10-13. They are
+   roadmap rows P3.2 to P3.10. P3.2 (no dud rejections) is built and waits for
+   its pull request to merge; **next is `/next P3.3`**, the streaming stutter,
+   then P3.4. P3.5 and the speech line in P3.7 each need a decision first.
 4. `/next P2.1`: record the eval baseline on both models.
 
 ## Acceptance
@@ -74,6 +76,11 @@ v0.9.0 is live at spice.aidoo.biz and the owner has cooked one plan from it.
 - P1.3: `npm audit fix`, then `vitest` 5, `pytest` 9 and an override for
   `next`'s nested `postcss` (D-010). `bash scripts/gates.sh`: all nine pass,
   `npm audit` finds 0 vulnerabilities. One gate cycle.
+- P3.2: a list with a known food in it (`spice/foods.py`) is never rejected. The
+  engine asks the model once more and a second refusal is a 502; refusals are
+  not cached and cached ones are ignored; the prompt asks for one plain
+  sentence. Red: 6 failed. Green: `bash scripts/gates.sh`, all nine pass.
+  Branch is stacked on P1.3, so merge that first.
 
 ## Stop/handoff checklist
 

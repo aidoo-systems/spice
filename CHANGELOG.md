@@ -4,6 +4,11 @@ All notable changes to SPICE are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- Real food is no longer turned away: if a list contains a known food and the model refuses it, we ask once more, and a second refusal is an error to retry rather than a put-down. Every preset is covered
+- A refusal is never cached, and refusals already in the cache are ignored
+- The refusal message is one plain sentence; "Try it with some actual food." is gone
+
 ### Security
 - Dependencies updated to clear every known high and critical advisory: `next` 15.5.27, `sharp`, `postcss`, `nanoid`, `source-map-js`; dev-only `vitest` 5 and `pytest` 9
 
