@@ -43,6 +43,21 @@ v0.9.0 is live at spice.aidoo.biz and the owner has cooked one plan from it.
 - Cook one plan on a phone.
 - P2.3 needs a decision: may anonymous combination signatures seed eval cases?
 
+## Owner's look-and-feel notes (P3.1), 2026-10-13
+
+From the owner, after using v0.9.0. Not yet specific enough to build; a designer
+review was commissioned the same day and its findings are not recorded here.
+
+1. **Presets return dud results.** Tapping "Couscous salad" gave the rejection
+   "Couscous and cucumber? You call that a meal? Try it with some actual food."
+   A preset the app offers must never be rejected. Check every preset in
+   `apps/web/lib/presets.ts` (also seen: Quesadilla, Ramen and egg, Pesto pasta).
+2. **The plan stutters as it streams in.** The page jumps while recipe and
+   instruction content loads. The loading process needs smoothing out.
+3. **The silly waiting sentences are gone.** `apps/web/lib/loading-messages.ts`
+   was deleted in v0.9.0. The owner misses them and wants them back somewhere
+   in the wait.
+
 ## Work log
 
 ### 2026-10-13
