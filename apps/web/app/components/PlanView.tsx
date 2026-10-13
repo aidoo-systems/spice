@@ -110,7 +110,6 @@ export default function PlanView(props: Props) {
       <div className="max-w-3xl mx-auto">
         {nav}
         <p className="font-display text-3xl font-bold tracking-tight">{plan.rejection}</p>
-        <p className="mt-3 text-stone-600 dark:text-muted">Try it with some actual food.</p>
       </div>
     );
   }

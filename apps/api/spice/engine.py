@@ -39,6 +39,7 @@ from spice.db import (
     reserve_llm_call,
     store_generation,
 )
+from spice.foods import has_known_food
 from spice.mocks import pick_mock
 from spice.partial_json import parse_partial
 
@@ -165,6 +166,17 @@ def _followup_key(f: FollowupRequest) -> str:
 # ── Preparation ──────────────────────────────────────────────────
 
 
+_NOT_A_REJECTION = (
+    "That list contains real food. Do not set `rejection`: leave it null and "
+    "write the plan, using rule 6 if the list is thin."
+)
+
+
+# Sent while a rejection is being withheld. The web client ignores the event
+# but counts the bytes, so its idle timeout does not fire during a retry.
+_WAIT = {"event": "wait", "data": {}}
+
+
 def _daily_cap() -> int:
     return int(os.environ.get("DAILY_LLM_CAP", "1000"))
 
@@ -174,12 +186,21 @@ def _reserve_or_raise() -> None:
         raise BudgetExceeded()
 
 
+def _cached(key: str) -> str | None:
+    """A cached plan, never a cached rejection: rejections were cached before
+    v0.9.1 and a wrong one must not outlive the fix by the cache's lifetime."""
+    cached = get_cached_generation(key)
+    if cached is not None and json.loads(cached).get("rejection"):
+        return None
+    return cached
+
+
 def prepare_suggest(req: SuggestRequest) -> Job:
     job = Job(req=req, cache_key=cache_key(req))
     if not llm.is_live():
         job.mock = pick_mock(req)
         return job
-    job.cached = get_cached_generation(job.cache_key)
+    job.cached = _cached(job.cache_key)
     if job.cached is None:
         _reserve_or_raise()
         job.messages = build_suggest_messages(req)
@@ -198,7 +219,7 @@ def prepare_followup(f: FollowupRequest) -> Job:
         mock.meta = None
         job.mock = mock
         return job
-    job.cached = get_cached_generation(job.cache_key)
+    job.cached = _cached(job.cache_key)
     if job.cached is None:
         _reserve_or_raise()
         job.messages = build_followup_messages(f)
@@ -256,6 +277,14 @@ async def _mock_text(resp: SuggestResponse, delay: float) -> AsyncIterator[str]:
         yield text[i : i + size]
 
 
+async def _collect(
+    messages: list[dict], temperature: float, buf: list[str]
+) -> AsyncIterator[str]:
+    async for delta in llm.stream_text(messages, temperature):
+        buf.append(delta)
+        yield delta
+
+
 async def run(job: Job, *, stream: bool = True) -> AsyncIterator[dict]:
     started = time.monotonic()
 
@@ -280,24 +309,38 @@ async def run(job: Job, *, stream: bool = True) -> AsyncIterator[dict]:
         yield {"event": "final", "data": resp.model_dump(mode="json")}
         return
 
+    # One deadline covers the retry too: a refusal must not double the wait.
+    messages = job.messages
     text = ""
+    refused = False
     try:
         async with asyncio.timeout(float(os.environ.get("GENERATION_DEADLINE", "75"))):
-            buf: list[str] = []
-
-            async def collect() -> AsyncIterator[str]:
-                async for delta in llm.stream_text(job.messages, job.temperature):
-                    buf.append(delta)
-                    yield delta
-
-            if stream:
-                async for snap in _snapshots(collect()):
-                    yield snap
-            else:
-                async for _ in collect():
-                    pass
-            text = "".join(buf)
-        resp = _from_draft(llm.extract_json(text))
+            for attempt in range(2):
+                buf: list[str] = []
+                if stream:
+                    async for snap in _snapshots(
+                        _collect(messages, job.temperature, buf)
+                    ):
+                        yield snap
+                else:
+                    async for _ in _collect(messages, job.temperature, buf):
+                        pass
+                text = "".join(buf)
+                resp = _from_draft(llm.extract_json(text))
+                if not (resp.rejection and has_known_food(job.req.ingredients)):
+                    break
+                # The model refused real food. Ask once more, told not to; a
+                # second refusal is our failure, and the cook gets an error,
+                # not a roast.
+                logger.warning("Model rejected real food: %r", resp.rejection)
+                if attempt == 1 or not reserve_llm_call(_daily_cap()):
+                    refused = True
+                    break
+                messages = [
+                    *job.messages,
+                    {"role": "user", "content": _NOT_A_REJECTION},
+                ]
+                yield _WAIT
     except TimeoutError:
         logger.warning("Generation timed out")
         yield _error(504, "SPICE took too long thinking about this one. Try again.")
@@ -312,9 +355,16 @@ async def run(job: Job, *, stream: bool = True) -> AsyncIterator[dict]:
             502, "The recipe model is unavailable right now. Try again in a moment."
         )
         return
+    if refused:
+        yield _error(502, "We couldn't make a plan from that. Try again.")
+        return
 
-    # Cache the model output only — community/meta are per-request.
-    store_generation(job.cache_key, resp.model_dump_json(exclude={"community", "meta"}))
+    # Cache the model output only — community/meta are per-request. A rejection
+    # is never cached: a wrong one would be replayed for the cache's lifetime.
+    if not resp.rejection:
+        store_generation(
+            job.cache_key, resp.model_dump_json(exclude={"community", "meta"})
+        )
     yield {
         "event": "final",
         "data": _finalize(job, resp, cached=False, started=started).model_dump(
@@ -333,9 +383,11 @@ async def _snapshots(deltas: AsyncIterator[str]) -> AsyncIterator[dict]:
         if now - last_emit < _PARTIAL_EVERY_S:
             continue
         snap = parse_partial(text)
-        if snap and snap != last:
-            last, last_emit = snap, now
-            yield {"event": "partial", "data": snap}
+        if not snap or snap == last:
+            continue
+        last, last_emit = snap, now
+        # A rejection is only shown once the engine has decided to honour it.
+        yield _WAIT if snap.get("rejection") else {"event": "partial", "data": snap}
 
 
 def _error(status: int, message: str) -> dict:

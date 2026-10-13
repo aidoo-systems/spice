@@ -26,6 +26,26 @@
     "expect": {"rejection": true}
   },
   {
+    "name": "preset-couscous-salad-not-rejected",
+    "request": {"ingredients": ["couscous", "cucumber", "lemon"]},
+    "expect": {"rejection": false}
+  },
+  {
+    "name": "preset-quesadilla-not-rejected",
+    "request": {"ingredients": ["tortilla", "cheese", "peppers"]},
+    "expect": {"rejection": false}
+  },
+  {
+    "name": "preset-ramen-and-egg-not-rejected",
+    "request": {"ingredients": ["instant ramen", "egg", "spring onions"]},
+    "expect": {"rejection": false}
+  },
+  {
+    "name": "preset-pesto-pasta-not-rejected",
+    "request": {"ingredients": ["pasta", "pesto", "parmesan"]},
+    "expect": {"rejection": false}
+  },
+  {
     "name": "mixed-non-food-still-cooks",
     "request": {"ingredients": ["bluetooth speaker", "egg", "bread"]},
     "expect": {"rejection": false, "forbid_in_steps": ["speaker"]}

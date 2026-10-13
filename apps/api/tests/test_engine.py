@@ -383,3 +383,121 @@ def test_empty_base_url_falls_back_to_openai(monkeypatch):
         assert str(llm._get_client().base_url).startswith("https://api.openai.com/v1")
     finally:
         llm._client = None
+
+
+# ── Rejections ────────────────────────────────────────────────────
+
+_REJECTION = {**_DRAFT, "rejection": "You call that a meal?", "title": "", "steps": []}
+
+
+@pytest.fixture
+def scripted_model(monkeypatch):
+    """A fake model that returns the queued drafts in order, then `_DRAFT`."""
+    queue: list[dict] = []
+    calls: list[list[dict]] = []
+
+    async def fake_stream(messages, temperature):
+        calls.append(messages)
+        text = json.dumps(queue.pop(0) if queue else _DRAFT)
+        for i in range(0, len(text), 15):
+            yield text[i : i + 15]
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test")
+    monkeypatch.setattr(llm, "stream_text", fake_stream)
+    monkeypatch.setattr(engine, "_PARTIAL_EVERY_S", 0)
+    return queue, calls
+
+
+def test_real_food_is_never_rejected(scripted_model):
+    queue, calls = scripted_model
+    queue.append(_REJECTION)
+    res = client.post(
+        "/v1/suggest", json={"ingredients": ["couscous", "cucumber", "reject-a"]}
+    )
+    assert res.status_code == 200
+    assert res.json()["rejection"] is None
+    assert res.json()["title"] == "Fake fried rice"
+    assert len(calls) == 2
+    assert "rejection" in calls[1][-1]["content"]
+
+
+def test_a_second_rejection_of_real_food_is_an_error_not_a_roast(scripted_model):
+    queue, calls = scripted_model
+    queue.extend([_REJECTION, _REJECTION])
+    body = {"ingredients": ["couscous", "lemon", "reject-b"]}
+    res = client.post("/v1/suggest", json=body)
+    assert res.status_code == 502
+    assert "You call that a meal" not in res.text
+    assert len(calls) == 2
+    # Nothing was cached: the next try reaches the model again.
+    assert client.post("/v1/suggest", json=body).status_code == 200
+    assert len(calls) == 3
+
+
+def test_non_food_rejection_is_honoured_but_never_cached(scripted_model):
+    queue, calls = scripted_model
+    queue.extend([_REJECTION, _REJECTION])
+    body = {"ingredients": ["headphones", "phone charger"]}
+    assert client.post("/v1/suggest", json=body).json()["rejection"]
+    assert client.post("/v1/suggest", json=body).json()["rejection"]
+    assert len(calls) == 2
+
+
+def test_a_rejection_already_in_the_cache_is_ignored(scripted_model):
+    _queue, calls = scripted_model
+    req = SuggestRequest(ingredients=["couscous", "cucumber", "reject-c"])
+    engine.store_generation(
+        engine.cache_key(req), SuggestResponse(rejection="No.").model_dump_json()
+    )
+    res = client.post("/v1/suggest", json=req.model_dump(mode="json"))
+    assert res.json()["rejection"] is None
+    assert len(calls) == 1
+
+
+def test_no_partial_carries_a_rejection(scripted_model):
+    queue, _calls = scripted_model
+    queue.append(_REJECTION)
+    res = client.post(
+        "/v1/suggest/stream", json={"ingredients": ["couscous", "reject-d"]}
+    )
+    events = _sse(res)
+    assert events[-1][0] == "final"
+    assert events[-1][1]["title"] == "Fake fried rice"
+    assert not [d for e, d in events if e == "partial" and d.get("rejection")]
+    # The client's idle timer is fed while the refusal is withheld.
+    assert "wait" in [e for e, _ in events]
+
+
+def test_one_deadline_covers_the_retry(scripted_model, monkeypatch):
+    import asyncio
+
+    queue, _calls = scripted_model
+    queue.append(_REJECTION)
+    real = llm.stream_text
+
+    async def slow(messages, temperature):
+        await asyncio.sleep(0.15)
+        async for delta in real(messages, temperature):
+            yield delta
+
+    monkeypatch.setattr(llm, "stream_text", slow)
+    monkeypatch.setenv("GENERATION_DEADLINE", "0.25")
+    res = client.post("/v1/suggest", json={"ingredients": ["couscous", "reject-e"]})
+    # Each attempt alone fits the deadline; only the two together exceed it.
+    assert res.status_code == 504
+
+
+def test_every_preset_is_made_of_known_food():
+    import re
+    from pathlib import Path
+
+    from spice.foods import has_known_food
+
+    src = (Path(__file__).parents[2] / "web" / "lib" / "presets.ts").read_text("utf-8")
+    presets = re.findall(r"ingredients: \[([^\]]+)\]", src)
+    assert len(presets) >= 20
+    for raw in presets:
+        for name in re.findall(r'"([^"]+)"', raw):
+            assert has_known_food([name]), name
+    assert not has_known_food(["headphones", "phone charger"])
+    assert not has_known_food(["bluetooth speaker"])

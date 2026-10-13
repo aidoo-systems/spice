@@ -56,7 +56,15 @@ on a phone. Taste is not machine-checkable; every item here is the owner's call.
 | ID | Outcome | Status | Gate | Stakes | Acceptance evidence |
 |---|---|---|---|---|---|
 | P3.1 | The owner's notes from using v0.9.0 are a list of specific changes | Proposed | owner | routine | The list exists in `CURRENT_SPRINT.md`, each line specific enough to build |
-| P3.2 | Each change from P3.1, built | Proposed | owner | routine | A before and after screenshot at phone width; the owner says yes or no |
+| P3.2 | Real food is never rejected: every preset, and any list with a known food in it (owner note 1) | Ready For Test | machine | high | `pytest tests/test_engine.py -k "reject or preset or partial_carries"`: 6 failed before the change, pass after; `bash scripts/gates.sh`: `All gates passed.` (108 API tests). Still to record: the four `preset-*-not-rejected` eval cases on `gpt-4o-mini`, which CI runs |
+| P3.3 | The plan streams in without the page jumping (owner note 2) | Proposed | owner | routine | A Playwright measure of layout shift under 0.1 on first generation and on regenerate (0.35 and 0.48 today), then the owner watches it on a phone |
+| P3.4 | The waiting sentences are back, in the empty title slot before the first token (owner note 3), and headings render in Bricolage Grotesque | Proposed | owner | routine | A screenshot of the wait and of a heading at phone width; the owner says yes or no |
+| P3.5 | A preset cooks the dish on its label | Proposed | undefined | routine | Not yet specified. Needs a decision: presets become pre-made plans the owner approves, or each gets its own time, equipment and flavour. "Surprise me" is removed or curated in the same item |
+| P3.6 | Plans give servings and an amount for every ingredient | Proposed | owner | high | `serves` and `ingredients: [{name, amount}]` in the draft and shared schema, shown before the steps; evals still at 90%. `high` because it changes the schema every plan is written in |
+| P3.7 | Cook mode is safe to use with wet hands: no accidental "Next", no auto-advance, your place kept on close, legible in light theme, larger text | Proposed | owner | routine | Before and after at phone width; the owner cooks with it. Includes the home page's "talks you through it" line: add speech or change the line (a decision) |
+| P3.8 | The first instruction is within one phone screen of the top of the plan, with "Start cooking" as a sticky bar | Proposed | owner | routine | Before and after at 375x812 |
+| P3.9 | Preferences, diet included, survive a reload and are easy to reach | Proposed | owner | routine | A Playwright test that a chosen diet survives a reload; before and after of the way in |
+| P3.10 | The designer review's should-fix and polish lists, each line built or declined | Proposed | owner | routine | The list in `CURRENT_SPRINT.md` with a disposition on every line. Split into rows when reached |
 
 ## Later, separately gated
 
