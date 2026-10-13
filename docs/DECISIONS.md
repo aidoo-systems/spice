@@ -121,3 +121,22 @@ Keep superseded decisions. Link the replacement rather than rewriting history.
   server from another checkout or worktree would be the thing tested.
 - **Alternatives:** A configurable port in the Playwright config (a code change;
   better, later).
+
+## D-010: next's nested postcss is lifted by an npm override, not by next 16
+
+- **Status:** Accepted
+- **Date:** 2026-10-13
+- **Decision:** `apps/web/package.json` has `overrides.next.postcss: ^8.5.30`.
+  `next` stays on 15.
+- **Why:** `next` 15.5.27 pins `postcss` 8.4.31 exactly, which carries four high
+  advisories. The roadmap row for P1.3 said every runtime fix was non-breaking;
+  for this one npm's only offer was `next` 16. A framework major does not belong
+  inside a security fix. 8.4.31 to 8.5.30 is the same major, and the `build` and
+  `e2e` gates pass on it.
+- **Alternatives:** `next` 16 (a breaking change to what production runs; its
+  own item if wanted). Leaving it and lowering the audit level (hides the next
+  one too).
+- **Consequences:** `next` runs on a `postcss` it was not released against. The
+  override is one more thing to remove.
+- **Revisit when:** `next` is upgraded to a version that ships a fixed `postcss`:
+  delete the override in the same change.
