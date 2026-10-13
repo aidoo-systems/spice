@@ -43,13 +43,13 @@ export default function FollowupBox({ busy, sampleIngredient, onAsk }: Props) {
           onChange={(e) => setQ(e.target.value)}
           maxLength={200}
           placeholder="Missing something? Cooking for more? Ask…"
-          className="flex-1 min-w-0 border border-stone-200 dark:border-line bg-stone-50 dark:bg-surface-dark-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-spice-500/50"
+          className="flex-1 min-w-0 border border-stone-300 dark:border-line bg-white dark:bg-surface-dark-input rounded-xl px-4 py-3 text-base focus:outline-none focus:border-stone-500 dark:focus:border-muted"
         />
         <button
           type="submit"
           disabled={busy || !q.trim()}
           aria-label="Ask"
-          className="px-3 rounded-lg border border-stone-300 dark:border-line text-stone-800 dark:text-ink hover:border-stone-500 dark:hover:border-muted disabled:opacity-40 transition-colors"
+          className="px-4 rounded-xl border border-stone-300 dark:border-line text-stone-800 dark:text-ink hover:border-stone-500 dark:hover:border-muted disabled:opacity-40 transition-colors"
         >
           <Icon name="send" />
         </button>
@@ -60,7 +60,7 @@ export default function FollowupBox({ busy, sampleIngredient, onAsk }: Props) {
             key={s}
             onClick={() => submit(s)}
             disabled={busy}
-            className="text-xs px-2.5 py-1 rounded-md border border-stone-300/70 dark:border-line text-stone-500 dark:text-muted hover:border-spice-400/60 hover:text-spice-700 dark:hover:text-spice-300 disabled:opacity-50 transition-colors"
+            className="text-sm px-3 py-1.5 min-h-[36px] rounded-lg border border-stone-300 dark:border-line text-stone-700 dark:text-muted hover:border-stone-500 dark:hover:border-muted hover:text-stone-900 dark:hover:text-ink disabled:opacity-50 transition-colors"
           >
             {s}
           </button>

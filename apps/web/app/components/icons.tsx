@@ -14,6 +14,14 @@ const PATHS = {
   check: ["M5 13l4 4L19 7"],
   undo: ["M3 10h10a5 5 0 010 10H9M3 10l4-4M3 10l4 4"],
   send: ["M5 12h14M13 6l6 6-6 6"],
+  back: ["M19 12H5M11 18l-6-6 6-6"],
+  volume: ["M11 5L6 9H3v6h3l5 4V5z", "M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"],
+  mute: ["M11 5L6 9H3v6h3l5 4V5z", "M22 9l-6 6M16 9l6 6"],
+  sliders: ["M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0", "M16 4v4M10 10v4M18 16v4"],
+  play: ["M7 4.5v15l13-7.5-13-7.5z"],
+  plus: ["M12 5v14M5 12h14"],
+  refresh: ["M4 4v6h6", "M20 20v-6h-6", "M20 10a8 8 0 00-14.9-3M4 14a8 8 0 0014.9 3"],
+  share: ["M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7", "M16 6l-4-4-4 4M12 2v13"],
 } as const;
 
 export type IconName = keyof typeof PATHS;

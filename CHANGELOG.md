@@ -2,6 +2,27 @@
 
 All notable changes to SPICE are documented here.
 
+## [0.9.0] - 2026-10-13
+
+### Added
+- The timeline: each plan drawn across the minutes, one block per step and a lane per ingredient; used on the plan, in cook mode, on the home sample and on the share poster
+- Full-screen cook mode: one step in large type, countdown to the next step, tap/swipe/arrow-key navigation, screen wake lock, step sound toggle, and a done screen that asks how it went (finishing counts as cooked)
+- A dedicated plan screen that the plan streams into, with browser back returning home
+- Home screen led by one ingredient box, preferences summarised in a line behind "Change", one-tap presets, and a finished sample plan ("Here's one we made earlier")
+- New SPICE mark (three staggered bars, a timeline in miniature) used in the header, app icon and poster
+- Appearance setting: match device, light or dark
+
+### Changed
+- Plan page laid out like a recipe (title, start cooking, timeline, what you need, steps, then quieter sections) instead of a stack of cards
+- Share card is now a 1080×1350 vermilion poster with the timeline
+- Theme follows the device by default
+- Vermilion is reserved for the title, the timeline and the main action; ingredients, toggles and presets are neutral
+- Consistent wording: sentence case, "min" and "kcal" throughout
+- "by ai.doo" moved from the header to the footer; the "Smart Pantry Intelligence & Culinary Engine" backronym is gone from the app
+
+### Removed
+- The guided tour (the first screen no longer needs one)
+
 ## [0.8.0] - 2026-10-13
 
 ### Added

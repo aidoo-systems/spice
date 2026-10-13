@@ -6,6 +6,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.0",
+    date: "2026-10-13",
+    changes: [
+      { type: "added", text: "The timeline: your plan drawn across the minutes" },
+      { type: "added", text: "Full-screen cook mode that keeps your screen on" },
+      { type: "added", text: "A sample plan on the home screen" },
+      { type: "added", text: "Share your plan as a poster" },
+      { type: "changed", text: "Plans open on their own screen and read like a recipe" },
+      { type: "changed", text: "Follows your device's light or dark setting" },
+      { type: "changed", text: "A simpler first screen" },
+    ],
+  },
+  {
     version: "0.8.0",
     date: "2026-10-13",
     changes: [

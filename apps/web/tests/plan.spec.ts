@@ -58,7 +58,7 @@ test("a preset streams a checked plan, then a follow-up revises it", async ({ pa
   });
 
   await page.goto("/");
-  await page.getByRole("button", { name: "Fried rice" }).or(page.getByRole("button", { name: "Budget Challenge" })).first().click();
+  await page.getByRole("button", { name: /Surprise me/ }).click();
 
   await expect(page.getByRole("heading", { level: 2, name: "Crispy egg fried rice", exact: true })).toBeVisible();
   await expect(page.getByText(/Uses only what you have/)).toBeVisible();
@@ -83,14 +83,18 @@ test("a preset streams a checked plan, then a follow-up revises it", async ({ pa
   await expect(page.getByRole("button", { name: "✓ Cooked" })).toBeDisabled();
   await expect(page.getByText(/Cooked 4 times by SPICE users/)).toBeVisible();
   expect(cookedCalls).toBe(1);
+
+  // The plan is its own screen: the browser's back button returns home.
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "What’s in your kitchen?" })).toBeVisible();
 });
 
-test("errors are shown in plain words and the previous plan stays", async ({ page }) => {
+test("errors are shown in plain words and you land back home", async ({ page }) => {
   await page.route("**/api/v1/suggest/stream", (route) =>
     route.fulfill({ status: 429, json: { detail: "You've cooked up a lot today. Give SPICE a breather and try again later." } }),
   );
   await page.goto("/");
-  await page.getByRole("button", { name: "Budget Challenge" }).click();
+  await page.getByRole("button", { name: /Surprise me/ }).click();
   await expect(page.getByText("Give SPICE a breather")).toBeVisible();
   await expect(page.getByText("What’s in your kitchen?")).toBeVisible();
 });
@@ -100,6 +104,36 @@ test("demo mode is labelled", async ({ page }) => {
     fulfillSSE(route, [["final", { ...plan, meta: { ...meta, mock: true, model: "demo (no API key)" } }]]),
   );
   await page.goto("/");
-  await page.getByRole("button", { name: "Budget Challenge" }).click();
+  await page.getByRole("button", { name: /Surprise me/ }).click();
   await expect(page.getByText("Demo mode.")).toBeVisible();
+});
+
+test("cook mode runs full screen and counts a cook when finished", async ({ page }) => {
+  await page.route("**/api/v1/suggest/stream", (route) => fulfillSSE(route, [["final", plan]]));
+  let cookedCalls = 0;
+  await page.route("**/api/v1/cooked", (route) => {
+    cookedCalls++;
+    return route.fulfill({ json: { cooked_count: 4 } });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Surprise me/ }).click();
+  await page.getByRole("button", { name: "Start cooking" }).click();
+
+  const cook = page.getByRole("dialog", { name: /Cooking/ });
+  await expect(cook).toBeVisible();
+  await expect(cook.getByText("Step 1 of 3")).toBeVisible();
+  await expect(cook.getByText("Heat oil in a pan.")).toBeVisible();
+  await page.keyboard.press("ArrowRight");
+  await expect(cook.getByText("Step 2 of 3")).toBeVisible();
+  await cook.getByRole("button", { name: "Back" }).click();
+  await expect(cook.getByText("Step 1 of 3")).toBeVisible();
+  await cook.getByRole("button", { name: "Next", exact: true }).click();
+  await cook.getByRole("button", { name: "Next", exact: true }).click();
+  await cook.getByRole("button", { name: "Finish" }).click();
+
+  await expect(cook.getByText("Done. Time to eat.")).toBeVisible();
+  await expect.poll(() => cookedCalls).toBe(1);
+  await cook.getByRole("button", { name: "Back to the plan" }).click();
+  await expect(cook).toBeHidden();
+  await expect(page.getByRole("button", { name: "✓ Cooked" })).toBeDisabled();
 });

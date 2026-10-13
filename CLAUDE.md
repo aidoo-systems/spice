@@ -1,8 +1,8 @@
-# SPICE — Smart Pantry Intelligence & Culinary Engine
+# SPICE
 
 Ingredient-to-meal-plan app and ai.doo's AI showcase. Enter what you have and get a timed, step-by-step plan that streams in live, has been checked by the server, and can be changed with follow-up questions.
 
-**Version:** v0.8.0 (keep `apps/api/spice/main.py`, `apps/web/package.json`, `apps/web/lib/changelog.ts` and `CHANGELOG.md` in step)
+**Version:** v0.9.0 (keep `apps/api/spice/main.py`, `apps/web/package.json`, `apps/web/lib/changelog.ts` and `CHANGELOG.md` in step)
 
 ## Build & Run
 
@@ -66,11 +66,11 @@ spice/
 │   │   ├── evals/            # cases.json, scoring.py, run.py
 │   │   └── tests/
 │   └── web/                  # Next.js frontend
-│       ├── app/page.tsx      # state orchestration only
-│       ├── app/components/   # TopBar, InputsPanel, ResultView, GenerationDetails, FollowupBox, AboutDialog, AidooMark, …
+│       ├── app/page.tsx      # state + view switching (home ↔ plan, pushState for back)
+│       ├── app/components/   # HomeView, PrefsSheet, PlanView, Timeline, CookMode (full screen), ShareCard (poster), Mark, …
 │       ├── app/fonts/        # Bricolage Grotesque (OFL)
 │       ├── app/api/[...path]/route.ts  # streaming proxy to the API
-│       ├── lib/              # api.ts (SSE client), sse.ts, plan.ts, types.ts, …
+│       ├── lib/              # api.ts (SSE client), sse.ts, plan.ts, timeline.ts, form.ts, sample.ts, types.ts, …
 │       └── tests/            # Playwright specs
 ├── packages/shared/          # schemas.py (Pydantic) mirrored by types.ts
 ├── docker-compose.yml
@@ -89,13 +89,14 @@ spice/
 
 ## Design
 
-SPICE is an ai.doo studio app. Its look follows aidoo.biz's (see the ai.doo repo's `docs/design/brand.md`, D-018 to D-020) without copying it:
+SPICE is an ai.doo studio app, but it stands on its own: the credit lives in the footer and About, not the header.
 
-- **One colour:** SPICE vermilion `spice-500` `#e8562a` (its card colour on aidoo.biz). Text on it is `spice-950`, never white (white is 3.6:1). Text in that colour uses `spice-600+` on light and `spice-300/400` on dark. Amber is ai.doo's ball, not SPICE's; blue belongs to PIKA/VERA. Warnings use amber, success emerald.
-- **Flat and warm:** surfaces and text tokens live in `app/globals.css` (`surface-dark #141312`, `ink`, `muted`, `dim`, `line`). No glows, gradients, coloured shadows, blur or decorative motion; any motion is functional and `motion-safe:`.
-- **Type:** Bricolage Grotesque (`font-display`, self-hosted in `app/fonts`) for headings, Inter for body. Sentence case; no tracked uppercase labels. Nothing under 12px.
-- **One filled button per view** (vermilion to start, ink-filled for "Start cooking"); everything else is outlined or an underlined link.
-- **The ai.doo mark** is `AidooWordmark`/`Ball` in `components/AidooMark.tsx`; never type "ai.doo" with a full stop as a logo.
+- **Signature:** the timeline (`components/Timeline.tsx`, geometry in `lib/timeline.ts`): steps as blocks across the minutes, a lane per ingredient. It appears on the plan, in cook mode, on the home sample and on the share poster, and the mark (`components/Mark.tsx`) is a miniature of it. New plan features should reuse it rather than invent another visual.
+- **Screens:** home (one input, prefs summary line → `PrefsSheet`, presets, sample plan) and plan (its own screen; the plan streams in at the top). Cook mode is a full-screen dialog with wake lock; finishing it counts as a cook.
+- **One colour:** SPICE vermilion `spice-500` `#e8562a`, reserved for the plan title card, the timeline and the single main action. Text on it is `spice-950`, never white (white is 3.6:1). Ingredients, toggles and presets are neutral (chosen = ink-filled). Warnings amber, success emerald; no blue.
+- **Flat and warm:** tokens in `app/globals.css` (`surface-dark #141312`, `ink`, `muted`, `dim`, `line`). No glows, gradients, coloured shadows, blur or decorative motion; functional motion is `motion-safe:`. The plan page is sections separated by space and rules, not cards.
+- **Type:** Bricolage Grotesque (`font-display`, self-hosted) for headings, Inter for body. Sentence case, nothing under 12px, "min" and "kcal".
+- **Theme:** follows the device; Settings can force light or dark (`spice-theme` in localStorage).
 - **Copy:** "we", plain, warm, a little dry; claim only what ships.
 
 ## Key Environment Variables

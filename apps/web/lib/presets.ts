@@ -1,14 +1,14 @@
 /** One-tap starter combos shown under the ingredient input. */
 
-import type { Preset } from "@/app/components/InputsPanel";
+import type { Preset } from "@/app/components/HomeView";
 
 export const PRESET_POOL: Preset[] = [
-  { label: "Maggi + Onion", ingredients: ["maggi noodles", "onion"] },
-  { label: "Rice + Frozen veg", ingredients: ["rice", "frozen peas", "soy sauce"] },
-  { label: "Pasta + Tinned tomatoes", ingredients: ["pasta", "tinned tomatoes", "garlic"] },
-  { label: "Egg + Toast", ingredients: ["egg", "bread"] },
-  { label: "Beans on Toast", ingredients: ["baked beans", "bread", "butter"] },
-  { label: "Ramen + Egg", ingredients: ["instant ramen", "egg", "spring onions"] },
+  { label: "Maggi and onion", ingredients: ["maggi noodles", "onion"] },
+  { label: "Rice and frozen veg", ingredients: ["rice", "frozen peas", "soy sauce"] },
+  { label: "Pasta and tinned tomatoes", ingredients: ["pasta", "tinned tomatoes", "garlic"] },
+  { label: "Eggs on toast", ingredients: ["egg", "bread"] },
+  { label: "Beans on toast", ingredients: ["baked beans", "bread", "butter"] },
+  { label: "Ramen and egg", ingredients: ["instant ramen", "egg", "spring onions"] },
   { label: "Chickpea stir-fry", ingredients: ["tinned chickpeas", "onion", "garlic"] },
   { label: "Omelette", ingredients: ["egg", "cheese", "butter"] },
   { label: "Tuna pasta", ingredients: ["pasta", "tinned tuna", "sweetcorn"] },
@@ -27,7 +27,7 @@ export const PRESET_POOL: Preset[] = [
   { label: "Dal", ingredients: ["red lentils", "onion", "garlic", "tinned tomatoes"] },
   { label: "Mushroom toast", ingredients: ["mushrooms", "bread", "garlic", "butter"] },
   { label: "Veggie wrap", ingredients: ["tortilla", "lettuce", "cucumber", "hummus"] },
-  { label: "Spam + Rice", ingredients: ["spam", "rice", "egg"] },
+  { label: "Spam and rice", ingredients: ["spam", "rice", "egg"] },
 ];
 
 export function pickRandomPresets(count: number): Preset[] {

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Step } from "@/lib/types";
-import { fmtTime } from "@/lib/plan";
+import { fmtClock, totalSeconds } from "@/lib/timeline";
+import Timeline from "./Timeline";
+import { Icon } from "./icons";
 
 function playDing() {
   try {
@@ -10,243 +12,244 @@ function playDing() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = "sine";
-    osc.frequency.value = 800;
-    gain.gain.value = 0.3;
+    osc.frequency.value = 880;
+    gain.gain.value = 0.25;
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start();
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-    osc.stop(ctx.currentTime + 0.15);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    osc.stop(ctx.currentTime + 0.25);
   } catch {
-    // Audio not available — silently ignore
+    // no audio available
   }
 }
 
-interface CookModeProps {
-  steps: Step[];
-  active: boolean;
-  onActiveChange: (active: boolean) => void;
-  /** Called once when the timer runs to the end — counts as a real cook. */
-  onFinish?: () => void;
+/** Keep the screen on while cooking; re-acquired when the tab comes back. */
+function useWakeLock(active: boolean) {
+  useEffect(() => {
+    if (!active || !("wakeLock" in navigator)) return;
+    let lock: WakeLockSentinel | null = null;
+    let cancelled = false;
+    const acquire = async () => {
+      try {
+        lock = await navigator.wakeLock.request("screen");
+        if (cancelled) lock.release();
+      } catch {
+        // denied (battery saver, unsupported) — cooking still works
+      }
+    };
+    const onVisible = () => document.visibilityState === "visible" && acquire();
+    acquire();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      lock?.release().catch(() => {});
+    };
+  }, [active]);
 }
 
-export default function CookMode({ steps, active, onActiveChange, onFinish }: CookModeProps) {
+interface Props {
+  open: boolean;
+  title: string;
+  steps: Step[];
+  prepMinutes?: number;
+  onClose: () => void;
+  /** Called once when the last step is finished — counts as a real cook. */
+  onFinish?: () => void;
+  /** Shown on the done screen (rating buttons). */
+  doneSlot?: ReactNode;
+}
+
+export default function CookMode({ open, title, steps, prepMinutes = 0, onClose, onFinish, doneSlot }: Props) {
+  const [idx, setIdx] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [muted, setMuted] = useState(true);
-  const [largeText, setLargeText] = useState(false);
-  const interval = useRef<ReturnType<typeof setInterval> | null>(null);
-  const prevStepIdx = useRef(0);
+  const [done, setDone] = useState(false);
+  const [sound, setSound] = useState(true);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const touchX = useRef<number | null>(null);
+  const total = totalSeconds(steps, prepMinutes);
 
-  const totalTime = steps.length > 0 ? steps[steps.length - 1].t_seconds + 60 : 0;
+  useWakeLock(open && !done);
 
-  // Load large text preference
+  // Fresh start every time cook mode opens.
   useEffect(() => {
-    setLargeText(localStorage.getItem("spice-large-text") === "true");
-  }, []);
+    if (!open) return;
+    setIdx(0);
+    setElapsed(0);
+    setPaused(false);
+    setDone(false);
+    closeRef.current?.focus();
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
 
-  const stop = useCallback(() => {
-    if (interval.current) clearInterval(interval.current);
-    interval.current = null;
-  }, []);
-
-  // Reset state when cook mode is activated
+  // The clock. Steps advance on their own when their start time arrives.
   useEffect(() => {
-    if (active) {
-      setElapsed(0);
-      setPaused(false);
-      prevStepIdx.current = 0;
-    }
-  }, [active]);
+    if (!open || paused || done) return;
+    const t = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(t);
+  }, [open, paused, done]);
 
   useEffect(() => {
-    if (active && !paused) {
-      interval.current = setInterval(() => {
-        setElapsed((e) => {
-          if (e >= totalTime) {
-            stop();
-            return e;
-          }
-          return e + 1;
-        });
-      }, 1000);
-    } else {
-      stop();
-    }
-    return stop;
-  }, [active, paused, totalTime, stop]);
+    if (!open || done) return;
+    const next = steps[idx + 1];
+    if (next && elapsed >= next.t_seconds) setIdx(idx + 1);
+    else if (!next && elapsed >= total) setDone(true);
+  }, [elapsed, idx, steps, total, open, done]);
 
-  // Find current step index
-  let currentIdx = 0;
-  for (let i = steps.length - 1; i >= 0; i--) {
-    if (elapsed >= steps[i].t_seconds) {
-      currentIdx = i;
-      break;
-    }
-  }
-
-  // Play ding on step change
+  const firstRender = useRef(true);
   useEffect(() => {
-    if (active && !muted && currentIdx !== prevStepIdx.current) {
-      playDing();
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
     }
-    prevStepIdx.current = currentIdx;
-  }, [currentIdx, active, muted]);
+    if (open && sound) playDing();
+  }, [idx]);
 
-  const done = active && totalTime > 0 && elapsed >= totalTime;
   useEffect(() => {
     if (done) onFinish?.();
   }, [done, onFinish]);
 
-  function skipToNextStep() {
-    if (currentIdx < steps.length - 1) {
-      setElapsed(steps[currentIdx + 1].t_seconds);
+  const next = useCallback(() => {
+    if (done) return;
+    if (idx + 1 < steps.length) {
+      setIdx(idx + 1);
+      setElapsed((e) => Math.max(e, steps[idx + 1].t_seconds));
+    } else {
+      setDone(true);
     }
-  }
+  }, [done, idx, steps]);
 
-  function toggleLargeText() {
-    const next = !largeText;
-    setLargeText(next);
-    localStorage.setItem("spice-large-text", String(next));
-  }
+  const prev = useCallback(() => {
+    if (done) return setDone(false);
+    if (idx > 0) {
+      setIdx(idx - 1);
+      setElapsed(steps[idx - 1].t_seconds);
+    }
+  }, [done, idx, steps]);
 
-  const textSize = largeText ? "text-base sm:text-lg" : "text-sm";
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      else if (e.key === "ArrowRight") next();
+      else if (e.key === "ArrowLeft") prev();
+      else if (e.key === " " && (e.target as HTMLElement)?.tagName !== "BUTTON") {
+        e.preventDefault();
+        setPaused((p) => !p);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, next, prev, onClose]);
 
-  if (!active) {
-    return (
-      <button
-        onClick={() => onActiveChange(true)}
-        className="w-full flex items-center justify-center gap-2 bg-stone-900 text-surface dark:bg-ink dark:text-surface-dark hover:bg-black dark:hover:bg-white py-3 rounded-lg text-base font-semibold transition-all duration-150"
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        Start cooking
-      </button>
-    );
-  }
+  if (!open || steps.length === 0) return null;
+
+  const step = steps[idx];
+  const upcoming = steps[idx + 1];
+  const untilNext = upcoming ? upcoming.t_seconds - elapsed : total - elapsed;
+  const btn = "min-h-[52px] px-5 rounded-xl border border-line text-ink text-base font-semibold hover:border-muted disabled:opacity-30 transition-colors";
 
   return (
-    <div className="border border-stone-200 dark:border-line rounded-xl p-4 bg-white dark:bg-surface-dark-card">
-      {/* Timer header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-3">
-          <span role="timer" aria-label={`Elapsed time: ${fmtTime(elapsed)}`} className="text-2xl font-mono font-bold text-spice-600 dark:text-spice-400">
-            {fmtTime(elapsed)}
-          </span>
-          <span className="text-sm text-stone-500 dark:text-muted">/ {fmtTime(totalTime)}</span>
-          <span className="text-xs text-stone-500 dark:text-muted font-medium">
-            Step {currentIdx + 1}/{steps.length}
-          </span>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Cooking ${title}`}
+      className="fixed inset-0 z-[60] bg-surface-dark text-ink flex flex-col"
+      onTouchStart={(e) => (touchX.current = e.touches[0].clientX)}
+      onTouchEnd={(e) => {
+        if (touchX.current === null) return;
+        const dx = e.changedTouches[0].clientX - touchX.current;
+        touchX.current = null;
+        if (dx < -60) next();
+        else if (dx > 60) prev();
+      }}
+    >
+      {/* Top: clock and close */}
+      <div className="flex items-center justify-between gap-4 px-5 pt-5 sm:px-10">
+        <div className="min-w-0">
+          <p className="font-display font-semibold truncate">{title}</p>
+          <p className="text-sm text-muted tabular-nums">
+            <span role="timer" aria-label={`Elapsed ${fmtClock(elapsed)}`}>{fmtClock(elapsed)}</span> / {fmtClock(total)}
+            {paused && <span className="ml-2 text-spice-300">Paused</span>}
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {/* Audio toggle */}
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setMuted(!muted)}
-            aria-label={muted ? "Unmute step notifications" : "Mute step notifications"}
-            className="text-xs px-2.5 py-1.5 rounded-lg border border-stone-200 dark:border-line hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150 min-h-[36px]"
+            onClick={() => setSound((s) => !s)}
+            className="p-3 rounded-xl text-muted hover:text-ink"
+            aria-label={sound ? "Turn step sound off" : "Turn step sound on"}
+            aria-pressed={sound}
           >
-            {muted ? (
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-              </svg>
-            )}
+            <Icon name={sound ? "volume" : "mute"} className="w-6 h-6" />
           </button>
-          {/* Large text toggle */}
-          <button
-            onClick={toggleLargeText}
-            aria-label={largeText ? "Normal text size" : "Large text size"}
-            className="text-xs px-2.5 py-1.5 rounded-lg border border-stone-200 dark:border-line hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150 min-h-[36px] font-bold"
-          >
-            {largeText ? "A" : "A+"}
+          <button ref={closeRef} onClick={onClose} className="p-3 rounded-xl text-muted hover:text-ink" aria-label="Close cook mode">
+            <Icon name="close" className="w-6 h-6" />
           </button>
-          {/* Skip */}
-          {!done && currentIdx < steps.length - 1 && (
-            <button
-              onClick={skipToNextStep}
-              className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 dark:border-line hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150 min-h-[36px]"
-            >
-              Skip
-            </button>
-          )}
-          {!done && (
-            <button
-              onClick={() => setPaused(!paused)}
-              className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 dark:border-line hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150 min-h-[36px]"
-            >
+        </div>
+      </div>
+
+      <div className="px-5 pt-4 sm:px-10">
+        <Timeline steps={steps} prepMinutes={prepMinutes} current={done ? steps.length : idx} showLanes={false} onSelect={(i) => {
+          setDone(false);
+          setIdx(i);
+          setElapsed(steps[i].t_seconds);
+        }} />
+      </div>
+
+      {/* The step — tap anywhere here for the next one */}
+      {done ? (
+        <div className="flex-1 flex flex-col justify-center px-6 sm:px-16 max-w-4xl w-full mx-auto" aria-live="polite">
+          <p className="font-display text-5xl sm:text-7xl font-bold tracking-tight">Done. Time to eat.</p>
+          <p className="mt-4 text-lg text-muted">How did it turn out? It helps the next plan.</p>
+          <div className="mt-6">{doneSlot}</div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={next}
+          className="flex-1 text-left flex flex-col justify-center px-6 sm:px-16 max-w-4xl w-full mx-auto focus:outline-none"
+          aria-label="Next step"
+        >
+          <span className="text-base text-muted tabular-nums">
+            Step {idx + 1} of {steps.length}
+          </span>
+          <span aria-live="polite" className="mt-3 font-display text-3xl sm:text-5xl lg:text-6xl font-semibold leading-tight tracking-tight">
+            {step.instruction}
+          </span>
+          {step.tip && <span className="mt-5 text-lg sm:text-xl text-muted">{step.tip}</span>}
+          <span className="mt-8 text-lg tabular-nums text-spice-300">
+            {upcoming ? `Next step in ${fmtClock(untilNext)}` : `Last step · about ${fmtClock(untilNext)} to go`}
+          </span>
+          {upcoming && <span className="mt-1 text-base text-dim line-clamp-1">Then: {upcoming.instruction}</span>}
+        </button>
+      )}
+
+      {/* Controls */}
+      <div className="grid grid-cols-3 gap-3 px-5 pb-6 sm:px-10 sm:pb-8 max-w-4xl w-full mx-auto">
+        <button onClick={prev} disabled={idx === 0 && !done} className={btn}>
+          Back
+        </button>
+        {done ? (
+          <button onClick={onClose} className={`${btn} col-span-2 bg-ink text-surface-dark border-transparent hover:bg-white`}>
+            Back to the plan
+          </button>
+        ) : (
+          <>
+            <button onClick={() => setPaused((p) => !p)} className={btn}>
               {paused ? "Resume" : "Pause"}
             </button>
-          )}
-          <button
-            onClick={() => {
-              stop();
-              onActiveChange(false);
-              setElapsed(0);
-              setPaused(false);
-            }}
-            className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 dark:border-line hover:bg-stone-100 dark:hover:bg-white/5 transition-colors duration-150 min-h-[36px]"
-          >
-            Stop
-          </button>
-        </div>
+            <button onClick={next} className={`${btn} bg-spice-500 text-spice-950 border-transparent hover:bg-spice-400`}>
+              {upcoming ? "Next" : "Finish"}
+            </button>
+          </>
+        )}
       </div>
-
-      {/* Progress bar */}
-      <div className="h-1.5 bg-stone-100 dark:bg-white/10 rounded-full mb-4 overflow-hidden">
-        <div
-          className="h-full bg-spice-500 rounded-full transition-all duration-1000"
-          style={{ width: `${Math.min((elapsed / totalTime) * 100, 100)}%` }}
-        />
-      </div>
-
-      {/* Steps timeline */}
-      <ol className="space-y-3">
-        {steps.map((step, i) => {
-          const isCurrent = i === currentIdx && !done;
-          const isPast = elapsed > step.t_seconds && !isCurrent;
-          return (
-            <li
-              key={i}
-              className={`flex gap-3 p-2 rounded-lg transition-colors ${
-                isCurrent
-                  ? "bg-spice-50 dark:bg-spice-950/30 border border-spice-200 dark:border-spice-800/60"
-                  : isPast
-                  ? "opacity-50"
-                  : ""
-              }`}
-            >
-              <span className={`font-mono min-w-[3.5rem] pt-0.5 ${textSize} ${isCurrent ? "text-spice-600 dark:text-spice-400" : "text-spice-600 dark:text-spice-400"}`}>
-                {fmtTime(step.t_seconds)}
-              </span>
-              <div className="flex-1">
-                <span className={`${isCurrent ? "font-medium" : ""} ${textSize}`}>
-                  {step.instruction}
-                </span>
-                {step.tip && (
-                  <p className={`text-stone-500 dark:text-muted mt-0.5 ${largeText ? "text-sm" : "text-xs"}`}>{step.tip}</p>
-                )}
-              </div>
-              {isCurrent && (
-                <span className="text-spice-500 dark:text-spice-400 text-xs font-bold self-center motion-safe:animate-pulse">
-                  NOW
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-
-      {done && (
-        <p className="text-center text-green-600 dark:text-green-400 font-medium mt-4">
-          Done! Time to eat.
-        </p>
-      )}
     </div>
   );
 }

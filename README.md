@@ -1,4 +1,4 @@
-# SPICE – Smart Pantry Intelligence & Culinary Engine
+# SPICE
 
 Tell SPICE what ingredients you have. It writes a step-by-step meal plan with timings, an upgrade ladder and the flavour reasoning, and you watch it stream in live. Every plan is checked on the server before it is final, and you can ask follow-ups ("I don't have garlic", "make it for 4") to change it.
 
@@ -13,7 +13,7 @@ SPICE is an [ai.doo](https://aidoo.biz) showcase app.
   - the plan fits your diet; diet-breaking upgrades are removed
 
   The results are shown under every plan in **How this was generated**.
-- **Honest numbers**: "Cooked N times" counts only finished Cook Mode sessions or "I cooked this" taps. It never counts generations.
+- **Honest numbers**: "Cooked N times" counts only finished cook-mode sessions or "I cooked this" taps. It never counts generations.
 - **Taste feedback loop**: ratings change the next plan for those ingredients, and the plan says what it changed.
 - **Follow-ups with undo**: you can revise a plan without starting again.
 - **Evals in CI**: a fixed set of cases (diets, non-food, prompt injection, typos, rescue mode…) runs against the real model on every change.
@@ -27,12 +27,13 @@ SPICE is an [ai.doo](https://aidoo.biz) showcase app.
 
 - **Flavour modes**: Bold & Spicy, Savoury & Umami, Comfort & Rich, Bright & Fresh, Clean & Light
 - **Upgrade ladder**: pantry upgrades, "if you have" additions and a £1 shop add-on
-- **Cook Mode**: a live timeline with a timer, step highlighting and pause/skip
+- **Cook mode**: full screen, one step at a time in big type, a countdown to the next step, tap/swipe/arrow keys to move, and the screen kept awake
 - **Minimal meal rescue**: a viable plan even from a single ingredient
 - **Pantry memory**: "always available" staples, stored in your browser
 - **Community ratings**: anonymous, per ingredient combination
-- **Share cards and saved recipes**: stored in your browser
-- **Budget Challenge and one-tap presets**: get from the first visit to a plan in one tap
+- **The timeline**: every plan is drawn across the minutes, with a lane per ingredient showing when it's used
+- **Share poster**: a 1080×1350 image of the plan and its timeline; saved recipes stay in your browser
+- **First screen**: one ingredient box, preferences summarised in a line, one-tap presets and a finished sample plan to look at first
 - **Demo mode**: runs without an API key, using canned plans replayed as a stream (clearly labelled)
 
 ## Project structure
@@ -156,7 +157,7 @@ Returns `{ "status": "ok", "feedback_breakdown": { "perfect": 100 }, "total_feed
 { "combo_signature": "egg,onion,rice|umami" }
 ```
 
-Returns `{ "cooked_count": 4 }`. The web app calls it once per plan, when Cook Mode finishes or the user taps "I cooked this".
+Returns `{ "cooked_count": 4 }`. The web app calls it once per plan, when cook mode finishes or the user taps "I cooked this".
 
 For `/v1/feedback` and `/v1/cooked`, the combo must already have been generated; otherwise the API returns 404.
 

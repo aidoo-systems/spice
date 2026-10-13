@@ -1,74 +1,37 @@
 "use client";
 
-import type { UpgradeLadder, Upgrade } from "@/lib/types";
+import type { Upgrade, UpgradeLadder } from "@/lib/types";
 
-function UpgradeCard({ upgrade, tint }: { upgrade: Upgrade; tint: string }) {
+function Item({ u }: { u: Upgrade }) {
   return (
-    <div className={`border rounded-lg p-3 ${tint}`}>
-      <span className="font-medium text-sm">+{upgrade.requires}</span>
-      <span className="text-stone-600 dark:text-muted text-sm"> &mdash; {upgrade.why}</span>
-      <p className="text-xs text-stone-500 dark:text-muted mt-1">{upgrade.how}</p>
-    </div>
+    <li className="leading-snug">
+      <span className="font-semibold">Add {u.requires}</span>
+      {u.why && <span className="text-stone-600 dark:text-muted"> for {u.why.charAt(0).toLowerCase() + u.why.slice(1)}</span>}
+      {u.how && <span className="block text-sm text-stone-500 dark:text-dim mt-0.5">{u.how}</span>}
+    </li>
   );
 }
 
-function LevelLabel({ n, children }: { n: number; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-2 mb-1.5">
-      <span className="grid place-items-center w-5 h-5 rounded-full bg-spice-500 text-spice-950 text-xs font-bold leading-none">
-        {n}
-      </span>
-      <span className="text-xs font-semibold text-stone-500 dark:text-muted ">
-        {children}
-      </span>
-    </div>
-  );
-}
-
-// Neutral cards; the numbered dot carries the colour.
-const TINT = "bg-stone-50 dark:bg-white/[0.03] border-stone-200 dark:border-line";
-
+/** Ways to make the dish better, from "you already have it" to "pick it up for £1". */
 export default function UpgradeLadderUI({ ladder }: { ladder: UpgradeLadder }) {
-  const hasPantry = ladder.pantry_upgrade.length > 0;
-  const hasIfYouHave = ladder.if_you_have.length > 0;
-  const hasShop = !!ladder.one_pound_shop;
+  const tiers: { label: string; items: Upgrade[] }[] = [
+    { label: "From your pantry", items: ladder.pantry_upgrade },
+    { label: "If you have it", items: ladder.if_you_have },
+    { label: "Worth buying (about £1)", items: ladder.one_pound_shop ? [ladder.one_pound_shop] : [] },
+  ].filter((t) => t.items.length > 0);
 
-  if (!hasPantry && !hasIfYouHave && !hasShop) return null;
-
-  // Number only the tiers that are present, so the ladder never starts at 2.
-  const tiers = [hasPantry && "pantry", hasIfYouHave && "have", hasShop && "shop"].filter(Boolean);
-  const n = (tier: string) => tiers.indexOf(tier) + 1;
+  if (tiers.length === 0) return null;
 
   return (
-    <div className="space-y-3">
-      {hasPantry && (
-        <div>
-          <LevelLabel n={n("pantry")}>From your pantry</LevelLabel>
-          <div className="space-y-2">
-            {ladder.pantry_upgrade.map((u, i) => (
-              <UpgradeCard key={i} upgrade={u} tint={TINT} />
-            ))}
-          </div>
+    <div className="grid sm:grid-cols-3 gap-6">
+      {tiers.map((t) => (
+        <div key={t.label}>
+          <p className="text-sm text-stone-500 dark:text-dim mb-2">{t.label}</p>
+          <ul className="space-y-3">
+            {t.items.map((u, i) => <Item key={i} u={u} />)}
+          </ul>
         </div>
-      )}
-
-      {hasIfYouHave && (
-        <div>
-          <LevelLabel n={n("have")}>If you have&hellip;</LevelLabel>
-          <div className="space-y-2">
-            {ladder.if_you_have.map((u, i) => (
-              <UpgradeCard key={i} upgrade={u} tint={TINT} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {hasShop && (
-        <div>
-          <LevelLabel n={n("shop")}>A &pound;1 shop add-on</LevelLabel>
-          <UpgradeCard upgrade={ladder.one_pound_shop!} tint={TINT} />
-        </div>
-      )}
+      ))}
     </div>
   );
 }

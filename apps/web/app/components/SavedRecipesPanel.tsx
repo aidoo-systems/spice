@@ -98,7 +98,7 @@ export default function SavedRecipesPanel({ open, onClose, onLoad }: Props) {
                       </h3>
                       <button
                         onClick={(e) => handleDelete(e, recipe.id)}
-                        className="text-stone-500 dark:text-dim hover:text-spice-500 dark:hover:text-spice-400 shrink-0 min-w-[24px] min-h-[24px] flex items-center justify-center"
+                        className="text-stone-500 dark:text-dim hover:text-stone-900 dark:hover:text-ink shrink-0 min-w-[24px] min-h-[24px] flex items-center justify-center"
                         aria-label={`Delete ${recipe.result.title}`}
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -1,58 +1,56 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
 import type { FeedbackType } from "@/lib/types";
 import { saveFeedback } from "@/lib/feedback";
 import { submitFeedback } from "@/lib/api";
 
 const OPTIONS: { value: FeedbackType; label: string }[] = [
+  { value: "perfect", label: "Perfect" },
   { value: "too_salty", label: "Too salty" },
   { value: "too_bland", label: "Too bland" },
-  { value: "perfect", label: "Perfect" },
-  { value: "needs_spice", label: "Needs spice" },
+  { value: "needs_spice", label: "Needs more heat" },
 ];
 
 interface Props {
   signature: string;
   onCommunityUpdate?: (breakdown: Record<string, number>, total: number) => void;
+  /** "dark" for cook mode's full-screen done view. */
+  tone?: "app" | "dark";
 }
 
-export default function FeedbackButtons({ signature, onCommunityUpdate }: Props) {
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+export default function FeedbackButtons({ signature, onCommunityUpdate, tone = "app" }: Props) {
+  const [chosen, setChosen] = useState<FeedbackType | null>(null);
+  const dark = tone === "dark";
 
-  if (submitted) return null;
+  if (chosen) {
+    return (
+      <p className={dark ? "text-lg text-ink" : "text-sm text-stone-600 dark:text-muted py-1.5"} role="status">
+        Thanks. The next plan for these ingredients will take that into account.
+      </p>
+    );
+  }
+
+  const btn = dark
+    ? "text-lg px-5 min-h-[52px] rounded-xl border border-line text-ink hover:border-muted transition-colors"
+    : "text-sm px-3 py-1.5 min-h-[36px] rounded-lg border border-stone-300 dark:border-line hover:border-stone-500 dark:hover:border-muted transition-colors";
 
   return (
-    <div>
-      <p className="text-sm font-semibold text-stone-500 dark:text-dim mb-2">How was it?</p>
-      <div className="flex flex-wrap gap-1.5">
-        {OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            disabled={submitting}
-            onClick={async () => {
-              if (submitting) return;
-              setSubmitting(true);
-              saveFeedback(signature, opt.value);
-              setSubmitted(true);
-              toast.success(`Noted: ${opt.label}`);
-
-              const res = await submitFeedback({
-                combo_signature: signature,
-                feedback_type: opt.value,
-              });
-              if (res && res.total_feedback > 0 && onCommunityUpdate) {
-                onCommunityUpdate(res.feedback_breakdown, res.total_feedback);
-              }
-            }}
-            className="text-sm px-3 py-1.5 rounded-lg border border-stone-300 dark:border-line text-stone-500 dark:text-dim hover:text-stone-800 dark:hover:text-ink hover:border-stone-400 dark:hover:border-muted transition-colors duration-150 whitespace-nowrap disabled:opacity-50"
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+    <div className="flex flex-wrap gap-2" role="group" aria-label="How was it?">
+      {OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          onClick={async () => {
+            setChosen(opt.value);
+            saveFeedback(signature, opt.value);
+            const res = await submitFeedback({ combo_signature: signature, feedback_type: opt.value });
+            if (res && res.total_feedback > 0) onCommunityUpdate?.(res.feedback_breakdown, res.total_feedback);
+          }}
+          className={btn}
+        >
+          {opt.label}
+        </button>
+      ))}
     </div>
   );
 }

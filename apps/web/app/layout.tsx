@@ -20,19 +20,19 @@ const bricolage = localFont({
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3737";
 
 export const metadata: Metadata = {
-  title: "SPICE – Smart Pantry Intelligence & Culinary Engine",
-  description: "Turn your ingredients into a step-by-step meal plan with timing, flavour reasoning, and upgrade suggestions.",
+  title: "SPICE — dinner from what you've got",
+  description: "Tell SPICE what's in your kitchen and it plans a meal you can cook tonight, with timings and a cook mode that talks you through it.",
   metadataBase: new URL(siteUrl),
   openGraph: {
-    title: "SPICE – Smart Pantry Intelligence & Culinary Engine",
-    description: "Turn your ingredients into a step-by-step meal plan with timing, flavour reasoning, and upgrade suggestions.",
+    title: "SPICE — dinner from what you've got",
+    description: "Tell SPICE what's in your kitchen and it plans a meal you can cook tonight, with timings and a cook mode that talks you through it.",
     type: "website",
     url: "/",
   },
   twitter: {
     card: "summary",
-    title: "SPICE – Smart Pantry Intelligence & Culinary Engine",
-    description: "Turn your ingredients into a step-by-step meal plan with timing, flavour reasoning, and upgrade suggestions.",
+    title: "SPICE — dinner from what you've got",
+    description: "Tell SPICE what's in your kitchen and it plans a meal you can cook tonight, with timings and a cook mode that talks you through it.",
   },
   other: {
     "theme-color": "#141312",
@@ -46,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Prevent flash of wrong theme */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("spice-theme");if(t!=="light"){document.documentElement.classList.add("dark")}}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem("spice-theme");var d=t?t==="dark":window.matchMedia("(prefers-color-scheme: dark)").matches;if(d){document.documentElement.classList.add("dark")}}catch(e){}})()`,
           }}
         />
         {process.env.NEXT_PUBLIC_UMAMI_URL && process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID && (

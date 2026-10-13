@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from spice.db import close_db, init_db
 from spice.routes import router
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 
 log_level = os.environ.get("LOG_LEVEL", "info").upper()
 logging.basicConfig(

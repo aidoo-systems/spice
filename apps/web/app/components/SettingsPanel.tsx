@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { SkillMode } from "@/lib/types";
 import { CHANGELOG } from "@/lib/changelog";
+import { Pill } from "./ui";
 
 const TYPE_LABELS: Record<string, string> = {
   added: "Added",
@@ -11,15 +12,18 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  added: "text-green-600 dark:text-green-400",
-  changed: "text-spice-600 dark:text-spice-400",
-  fixed: "text-blue-600 dark:text-blue-400",
+  added: "text-stone-600 dark:text-muted",
+  changed: "text-stone-600 dark:text-muted",
+  fixed: "text-stone-600 dark:text-muted",
 };
+
+export type ThemeChoice = "system" | "light" | "dark";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  onOpenTutorial: () => void;
+  theme: ThemeChoice;
+  onThemeChange: (t: ThemeChoice) => void;
   pantry: string[];
   pantryInput: string;
   onPantryInputChange: (value: string) => void;
@@ -32,7 +36,8 @@ interface Props {
 export default function SettingsPanel({
   open,
   onClose,
-  onOpenTutorial,
+  theme,
+  onThemeChange,
   pantry,
   pantryInput,
   onPantryInputChange,
@@ -145,7 +150,7 @@ export default function SettingsPanel({
                 </p>
                 <div className="flex gap-2 mb-3">
                   <input
-                    className="flex-1 border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-spice-500"
+                    className="flex-1 border border-stone-300 dark:border-line bg-white dark:bg-surface-dark-input rounded-lg px-3 py-2 text-base focus:outline-none focus:border-stone-500 dark:focus:border-muted"
                     placeholder="e.g. oil, salt, soy sauce"
                     value={pantryInput}
                     onChange={(e) => onPantryInputChange(e.target.value)}
@@ -158,7 +163,7 @@ export default function SettingsPanel({
                   />
                   <button
                     onClick={onAddPantryItem}
-                    className="text-sm bg-stone-700 dark:bg-stone-600 text-white px-3 py-2 rounded-lg hover:bg-stone-800 dark:hover:bg-stone-500 transition-colors min-h-[44px]"
+                    className="text-sm px-4 py-2 rounded-lg border border-stone-300 dark:border-line hover:border-stone-500 dark:hover:border-muted transition-colors min-h-[44px]"
                   >
                     Add
                   </button>
@@ -167,11 +172,12 @@ export default function SettingsPanel({
                   {pantry.map((item) => (
                     <span
                       key={item}
-                      className="bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 px-2 py-0.5 rounded-md text-xs flex items-center gap-1"
+                      className="bg-stone-200/70 dark:bg-white/10 pl-2.5 pr-1 py-0.5 rounded-md text-sm flex items-center gap-1"
                     >
                       {item}
                       <button
                         onClick={() => onRemovePantryItem(item)}
+                        aria-label={`Remove ${item}`}
                         className="text-stone-500 dark:text-muted hover:text-stone-800 dark:hover:text-stone-100 min-w-[20px] min-h-[20px] flex items-center justify-center"
                       >
                         &times;
@@ -186,18 +192,16 @@ export default function SettingsPanel({
                 </div>
               </section>
 
-              {/* Tutorial */}
+              {/* Appearance */}
               <section>
-                <label className="block text-sm font-medium mb-2">Tutorial</label>
-                <p className="text-xs text-stone-500 dark:text-dim mb-2">
-                  A quick guided tour for first-time users.
-                </p>
-                <button
-                  onClick={onOpenTutorial}
-                  className="text-sm px-4 py-2 rounded-lg border border-spice-400/60 dark:border-spice-500/60 text-spice-700 dark:text-spice-300 hover:bg-spice-50 dark:hover:bg-spice-900/20 transition-colors"
-                >
-                  Start tutorial
-                </button>
+                <label className="block text-sm font-medium mb-2">Appearance</label>
+                <div className="flex gap-2">
+                  {(["system", "light", "dark"] as const).map((t) => (
+                    <Pill key={t} active={theme === t} onClick={() => onThemeChange(t)}>
+                      {t === "system" ? "Match device" : t === "light" ? "Light" : "Dark"}
+                    </Pill>
+                  ))}
+                </div>
               </section>
             </div>
 
@@ -211,7 +215,7 @@ export default function SettingsPanel({
             <div className="p-4 border-t border-stone-200 dark:border-line mt-auto">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-stone-500 dark:text-dim">
-                  Smart Pantry Intelligence &amp; Culinary Engine
+                  SPICE v0.9.0
                 </p>
                 <button
                   onClick={() => setView("changelog")}

@@ -4,6 +4,9 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import type { SuggestResponse } from "@/lib/types";
 import { saveRecipe } from "@/lib/recipes";
+import { Wordmark } from "./Mark";
+import Timeline from "./Timeline";
+import { Icon } from "./icons";
 
 interface Props {
   result: SuggestResponse;
@@ -56,7 +59,7 @@ export default function ShareCard({ result, ingredientCount, className }: Props)
           text: `Check out this recipe: ${result.title}`,
           files: [file],
         });
-        toast.success("Shared!");
+        toast.success("Shared");
         return;
       }
 
@@ -66,7 +69,7 @@ export default function ShareCard({ result, ingredientCount, className }: Props)
           title: result.title,
           text: `Check out this recipe: ${result.title}`,
         });
-        toast.success("Shared!");
+        toast.success("Shared");
         return;
       }
 
@@ -75,7 +78,7 @@ export default function ShareCard({ result, ingredientCount, className }: Props)
       link.download = file.name;
       link.href = cardDataUrl;
       link.click();
-      toast.success("Card downloaded!");
+      toast.success("Image downloaded");
     } catch (err) {
       // User cancelled share dialog — not an error
       if (err instanceof Error && err.name === "AbortError") return;
@@ -87,71 +90,46 @@ export default function ShareCard({ result, ingredientCount, className }: Props)
   const handleSave = useCallback(() => {
     saveRecipe(result, ingredientCount);
     setSaved(true);
-    toast.success("Recipe saved!");
+    toast.success("Saved to this browser");
   }, [result, ingredientCount]);
+
+  const meta = [
+    result.prep_time_minutes > 0 ? `about ${result.prep_time_minutes} min` : null,
+    `${ingredientCount} ingredients`,
+    result.calories_estimate ? `~${result.calories_estimate} kcal` : null,
+  ].filter(Boolean).join(" · ");
 
   return (
     <div className={`relative ${className ?? ""}`}>
-      {/* Hidden card for export — positioned absolute so it doesn't affect layout */}
-      <div className="absolute overflow-hidden h-0 pointer-events-none">
-        <div
-          ref={cardRef}
-          className="w-[400px] bg-[#141312] text-[#f4f1ea] p-6 rounded-2xl"
-          style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
-        >
-          <div className="flex items-center justify-between mb-5">
-            <p className="font-display text-xl font-bold tracking-tight">
-              SP<span style={{ color: '#e8562a' }}>I</span>CE
-            </p>
-            <div className="w-8 h-1 bg-[#e8562a]" />
+      {/* The poster (1080×1350 at 2×), off-screen so it doesn't affect layout */}
+      <div className="absolute overflow-hidden h-0 w-0 pointer-events-none" aria-hidden="true">
+        <div ref={cardRef} className="w-[540px] h-[675px] bg-spice-500 text-spice-950 p-10 flex flex-col">
+          <div className="flex items-center gap-2 text-xl">
+            <Wordmark inverse />
           </div>
-          <h3 className="font-display text-lg font-bold mb-3 leading-tight">{result.title}</h3>
-          <div className="flex gap-3 text-xs text-[#b3aca2] mb-4">
-            <span>{ingredientCount} ingredients</span>
-            <span>&middot;</span>
-            <span>~{result.prep_time_minutes} mins</span>
-            {result.calories_estimate && (
-              <>
-                <span>&middot;</span>
-                <span>~{result.calories_estimate} cal</span>
-              </>
-            )}
+          <h3 className="mt-10 font-display text-[44px] font-bold leading-[1.05] tracking-tight line-clamp-4">{result.title}</h3>
+          <p className="mt-4 text-lg font-medium">{meta}</p>
+          <div className="mt-auto">
+            <Timeline steps={result.steps.slice(0, 12)} prepMinutes={result.prep_time_minutes} tone="poster" />
           </div>
-          {result.why_this_works.length > 0 && (
-            <p className="text-xs text-[#b3aca2] mb-4 border-l-2 border-[#e8562a] pl-3">
-              &ldquo;{result.why_this_works[0]}&rdquo;
-            </p>
+          {result.why_this_works[0] && (
+            <p className="mt-6 text-base leading-snug line-clamp-2">&ldquo;{result.why_this_works[0]}&rdquo;</p>
           )}
-          <div className="mt-4 pt-3 border-t border-[#34302d]">
-            <p className="text-[10px] text-[#958e85]">
-              spice.aidoo.biz &middot; by ai.doo
-            </p>
-          </div>
+          <p className="mt-6 pt-4 border-t border-spice-950/25 text-sm font-semibold">Make yours at spice.aidoo.biz</p>
         </div>
       </div>
 
-      <div className="flex gap-2 justify-end">
-        <button
-          onClick={handleShare}
-          disabled={!cardDataUrl}
-          className="p-2 rounded-lg border border-stone-300/70 dark:border-line text-stone-400 dark:text-dim hover:text-stone-800 dark:hover:text-ink hover:border-stone-400 dark:hover:border-muted transition-colors duration-150 disabled:opacity-30"
-          aria-label="Share recipe"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-          </svg>
+      <div className="flex gap-2">
+        <button onClick={handleShare} disabled={!cardDataUrl} className={action}>
+          <Icon name="share" className="w-4 h-4" /> Share
         </button>
-        <button
-          onClick={handleSave}
-          disabled={saved}
-          className="p-2 rounded-lg border border-stone-300/70 dark:border-line text-stone-400 dark:text-dim hover:text-stone-800 dark:hover:text-ink hover:border-stone-400 dark:hover:border-muted transition-colors duration-150 disabled:opacity-30"
-          aria-label={saved ? "Recipe saved" : "Save recipe"}
-        >
-          <svg className="w-4 h-4" fill={saved ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-          </svg>
+        <button onClick={handleSave} disabled={saved} className={action} aria-label={saved ? "Recipe saved" : "Save recipe"}>
+          <Icon name="bookmark" className="w-4 h-4" /> {saved ? "Saved" : "Save"}
         </button>
       </div>
     </div>
   );
 }
+
+const action =
+  "inline-flex items-center gap-1.5 text-sm px-3 py-1.5 min-h-[36px] rounded-lg border border-stone-300 dark:border-line text-stone-700 dark:text-ink hover:border-stone-500 dark:hover:border-muted disabled:opacity-40 transition-colors";

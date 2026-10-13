@@ -536,7 +536,7 @@ def test_health_includes_version():
     res = client.get("/health")
     assert res.status_code == 200
     data = res.json()
-    assert data["version"] == "0.8.0"
+    assert data["version"] == "0.9.0"
 
 
 # ── JSON parser robustness ─────────────────────────────────────

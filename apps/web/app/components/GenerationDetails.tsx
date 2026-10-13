@@ -12,7 +12,7 @@ const CHECK_LABELS: Record<string, string> = {
 };
 
 const GROUPS: { key: keyof GenerationMeta["grounding"]; label: string; tone: string }[] = [
-  { key: "from_ingredients", label: "From your list", tone: "bg-spice-100 dark:bg-spice-500/15 text-spice-800 dark:text-spice-300" },
+  { key: "from_ingredients", label: "From your list", tone: "bg-stone-200 dark:bg-white/15 text-stone-900 dark:text-ink" },
   { key: "from_pantry", label: "From your pantry", tone: "bg-stone-200 dark:bg-white/15 text-stone-800 dark:text-ink" },
   { key: "staples", label: "Basic staples", tone: "bg-stone-100 dark:bg-white/10 text-stone-600 dark:text-muted" },
   { key: "flagged_missing", label: "Flagged as missing", tone: "bg-stone-100 dark:bg-white/10 text-stone-600 dark:text-muted" },
@@ -28,8 +28,8 @@ export default function GenerationDetails({ meta }: { meta: GenerationMeta }) {
   const speed = meta.cached ? "from cache" : `${(meta.latency_ms / 1000).toFixed(1)}s`;
 
   return (
-    <details className="group rounded-xl border border-stone-200/80 dark:border-line bg-surface-card dark:bg-surface-dark-card">
-      <summary className="cursor-pointer list-none p-4 flex items-center justify-between gap-3 text-xs text-stone-500 dark:text-muted">
+    <details className="group rounded-2xl border border-stone-200 dark:border-line bg-surface-card dark:bg-surface-dark-card">
+      <summary className="cursor-pointer list-none p-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm text-stone-600 dark:text-muted">
         <span className="font-semibold">How this was generated</span>
         <span className="truncate">
           {meta.model} · {speed} · {passed}/{total} checks passed
