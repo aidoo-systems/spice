@@ -27,9 +27,9 @@ owner has cooked from it.
 
 | ID | Outcome | Status | Gate | Stakes | Acceptance evidence |
 |---|---|---|---|---|---|
-| P1.1 | v0.9.0 is live at spice.aidoo.biz | In Progress | owner | high | Owner merged aidoo-systems/spice#6 on 2026-10-13. Still to record: `gh run list --workflow deploy.yml --limit 1` shows success and `curl -fsS https://spice.aidoo.biz/api/health` reports `0.9.0` |
+| P1.1 | v0.9.0 is live at spice.aidoo.biz | Complete | owner | high | Owner merged aidoo-systems/spice#6 on 2026-10-13. `gh run list --workflow deploy.yml --limit 1`: `completed success Merge pull request #7 from aidoo-systems/studio/adopt Deploy to VPS master push 38467503215 1m40s` (the run for #6, 38465024116, also `success`). `curl -fsS https://spice.aidoo.biz/api/health`: `{"status":"ok","version":"0.9.0"}` |
 | P1.2 | The owner has cooked one plan end to end on a phone, from the live site | Proposed | owner | routine | The owner's word, with anything that got in the way written into P3.1 |
-| P1.3 | No dependency carries a known high or critical advisory | Proposed | machine | high | `bash scripts/gates.sh audit` prints `[PASS] audit`, and every other gate still passes. Found at adoption, 2026-10-13: runtime `next` (critical), `postcss`, `sharp`, `nanoid`, `source-map-js` (high), all with a non-breaking fix; dev-only `vitest`/`tinypool` (critical) and `pytest` 8.4.2, which need a major version. `high` because it changes what production runs |
+| P1.3 | No dependency carries a known high or critical advisory | Complete | machine | high | `bash scripts/gates.sh`, 2026-10-13: `[PASS] lint` `[PASS] format` `[PASS] tests` `[PASS] types` `[PASS] unit` `[PASS] build` `[PASS] e2e` `[PASS] audit` `[PASS] docs`, `All gates passed.` `npm audit`: `found 0 vulnerabilities` (was 8: 1 moderate, 4 high, 3 critical). `next` 15.5.12 to 15.5.27, `sharp` 0.35.5, `nanoid`, `source-map-js` by lockfile; `next`'s nested `postcss` by an override (D-010); `vitest` 3 to 5 and `pytest` 8 to 9 as dev-only majors |
 
 ## Phase 2: better plans
 

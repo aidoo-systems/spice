@@ -2,6 +2,11 @@
 
 All notable changes to SPICE are documented here.
 
+## [Unreleased]
+
+### Security
+- Dependencies updated to clear every known high and critical advisory: `next` 15.5.27, `sharp`, `postcss`, `nanoid`, `source-map-js`; dev-only `vitest` 5 and `pytest` 9
+
 ## [0.9.0] - 2026-10-13
 
 ### Added
