@@ -4,6 +4,33 @@ Ingredient-to-meal-plan app and ai.doo's AI showcase. Enter what you have and ge
 
 **Version:** v0.9.0 (keep `apps/api/spice/main.py`, `apps/web/package.json`, `apps/web/lib/changelog.ts` and `CHANGELOG.md` in step)
 
+## Working rules
+
+1. Read `docs/CURRENT_SPRINT.md`, then `docs/DECISIONS.md`, before non-trivial work.
+2. **The cook wins.** SPICE is for the home cook and for people evaluating ai.doo; when they conflict, the cook wins (D-001).
+3. Run the gates before and after real work. A roadmap item reaches `Complete` only with its acceptance evidence recorded: the command and its output.
+4. Owner gates are never simulated. Whether a dish is worth cooking and whether a screen looks right are the owner's to judge.
+5. **A push to `master` deploys to spice.aidoo.biz.** Work on a branch and land through a pull request.
+6. Not building: accounts or server-side user data; Hub auth or a dependency on the suite's Ollama (D-002).
+
+## Gates
+
+```bash
+bash scripts/gates.sh              # everything; about two minutes
+SKIP_SLOW=1 bash scripts/gates.sh  # skips e2e and audit, for the inner loop; never to land
+bash scripts/gates.sh tests        # one gate
+```
+
+Gates, in order: `lint`, `format`, `tests` (API); `types`, `unit`, `build`, `e2e` (web); `audit` (both); `docs`. One-time setup:
+
+```bash
+python -m venv apps/api/.venv
+apps/api/.venv/Scripts/python -m pip install -r apps/api/requirements-dev.txt   # bin/python off Windows
+cd apps/web && npm ci && npx playwright install chromium
+```
+
+The evals are not a gate (D-006): they call the real model. CI runs them.
+
 ## Build & Run
 
 ```bash
@@ -123,3 +150,22 @@ SPICE is an ai.doo studio app, but it stands on its own: the credit lives in the
 - nginx in front of the web app must not buffer `/api/v1/*/stream` (the API sends `X-Accel-Buffering: no`; keep `proxy_buffering` defaults or turn it off for that path).
 - Frontend and API have separate dependency management
 - Playwright needs a Chromium: `npx playwright install chromium`, or point `PLAYWRIGHT_CHROMIUM_PATH` at an existing binary
+- **Ruff is 0.17.0 here and 0.15.9 everywhere else in the suite**, on the same machine-wide Python. There is no ruff config, so the rules are that release's defaults: lint that passes on 0.15.9 is not the lint CI runs. Use `apps/api/.venv`; the `lint` and `format` gates fail on any other ruff (D-007).
+- **A native run spends real money.** `llm.py` calls `load_dotenv()`, which finds the repo-root `.env` and its real `OPENAI_API_KEY`. To get demo mode, start the API with `OPENAI_API_KEY=` set empty.
+- **Playwright reuses whatever is on port 3737** outside CI. With a dev server running from another checkout or worktree, the E2E run tests that code, not yours. The `e2e` gate refuses to run while the port is taken (D-009).
+- **`e2e` runs against `next dev`**, not the production build; the `build` gate is what proves the build.
+- A fresh worktree has no `apps/api/.venv` and no `apps/web/node_modules`. Do the one-time setup under Gates first.
+- CI does not call `scripts/gates.sh` (D-008): CI runs the evals and no audit, the gates run the audit and no evals. The desk is Python 3.14 and Node 24; CI is 3.11 and 22; the Docker image is Python 3.12.
+- `scripts/gates.sh` must keep LF line endings (`.gitattributes` pins it); `core.autocrlf` is on at the desk.
+- There is no `pyproject.toml` in `apps/api`: `pip install -e .` fails. Install from the requirements files.
+
+## Documents
+
+| Document | Purpose |
+|---|---|
+| `docs/PRODUCT_BRIEF.md` | Who it is for, non-goals, assumptions |
+| `docs/ARCHITECTURE.md` | Boundaries, data, failure behaviour, debt |
+| `docs/ROADMAP.md` | Outcomes, gates and evidence |
+| `docs/CURRENT_SPRINT.md` | Where work stopped and the one next action |
+| `docs/DECISIONS.md` | Choices already made, with the reasons |
+| `AGENTS.md` | How Codex reviews |

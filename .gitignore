@@ -28,3 +28,5 @@ Thumbs.db
 .claude/settings.local.json
 .claude/todo.md
 .ruff_cache/
+.loop/
+.playwright/
