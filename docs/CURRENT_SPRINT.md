@@ -11,27 +11,24 @@ v0.9.0 is live at spice.aidoo.biz and the owner has cooked one plan from it.
 ## Current truth
 
 - v0.9.0 is on `master`: the owner merged aidoo-systems/spice#6 on 2026-10-13
-  (merge commit `b449b4e`), which started the deploy. Whether production is on
-  v0.9.0 is not yet confirmed here: check the acceptance commands below.
+  (merge commit `b449b4e`), which started the deploy. Production is on v0.9.0:
+  the deploy run succeeded and `/api/health` reports `0.9.0` (P1.1, Complete).
 - The studio adopted the repo on 2026-10-13: documents, `scripts/gates.sh`,
   merged settings. Nothing in `apps/` or `packages/` was changed by adoption.
-- Gates on the v0.9.0 tree, 2026-10-13: eight of nine pass. **`audit` fails**,
-  on advisories that were already there and that nothing checked before: see the
-  work log and P1.3. The runtime ones (`next` is critical) are in what
-  production runs today.
+- Gates, 2026-10-13: all nine pass on the P1.3 branch. On `master` until that
+  lands, `audit` still fails, and the runtime advisories (`next` is critical)
+  are in what production runs.
 - The owner has run v0.9.0 locally (API on 5000, web on 3737) and has not yet
   said how it went.
 - Not known: whether the evals pass at 90% on this tree. CI on #6 decides.
 
 ## Execution order
 
-1. Confirm the deploy with the acceptance commands and record their output
-   against P1.1.
+1. Owner merges the P1.3 pull request (it deploys).
 2. Owner cooks one plan end to end on a phone from the live site (P1.2).
-3. `/next P1.3`: clear the dependency advisories. The first item the gauntlet
-   can close unattended, and the only red gate. It does not wait for 1 or 2.
+3. The design items: the owner's notes and the designer review (P3.1), turned
+   into roadmap rows and built. The owner asked for these next, 2026-10-13.
 4. `/next P2.1`: record the eval baseline on both models.
-5. Owner turns their notes into the P3.1 list.
 
 ## Acceptance
 
@@ -71,6 +68,12 @@ v0.9.0 is live at spice.aidoo.biz and the owner has cooked one plan from it.
   production runs and two of them need a major version, so it is its own item
   (P1.3), not a line in a setup commit.
 - The `e2e` gate was also run with a dev server on 3737 and refused, as designed.
+- P1.1 confirmed: `gh run list --workflow deploy.yml --limit 1` shows `success`
+  and `curl -fsS https://spice.aidoo.biz/api/health` gives
+  `{"status":"ok","version":"0.9.0"}`.
+- P1.3: `npm audit fix`, then `vitest` 5, `pytest` 9 and an override for
+  `next`'s nested `postcss` (D-010). `bash scripts/gates.sh`: all nine pass,
+  `npm audit` finds 0 vulnerabilities. One gate cycle.
 
 ## Stop/handoff checklist
 
