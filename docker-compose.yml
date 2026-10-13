@@ -8,6 +8,13 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
+      - DAILY_LLM_CAP=${DAILY_LLM_CAP:-1000}
+      # Rate limiting keys on the client IP our edge proxy appends to
+      # X-Forwarded-For. Set CLIENT_IP_HEADER instead if the edge proxy
+      # overwrites a dedicated header (e.g. cf-connecting-ip behind Cloudflare).
+      - TRUSTED_PROXY_HOPS=${TRUSTED_PROXY_HOPS:-1}
+      - CLIENT_IP_HEADER=${CLIENT_IP_HEADER:-}
       - CORS_ORIGINS=http://localhost:3737,http://web:3737
       - LOG_LEVEL=info
     restart: unless-stopped

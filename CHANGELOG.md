@@ -2,6 +2,36 @@
 
 All notable changes to SPICE are documented here.
 
+## [0.8.0] - 2026-10-13
+
+### Added
+- Streaming plans: `POST /v1/suggest/stream` and `/v1/followup/stream` send SSE `partial` snapshots (tolerant partial-JSON parser) and then a validated `final` plan; the UI renders the plan as it is written
+- Strict structured outputs: the model writes to a `json_schema` generated from a Pydantic draft model; the "fix this JSON" repair call is removed
+- Plan checks on every response (`meta.checks`): timeline, time limit, ingredient grounding per step (`steps[].uses`, `meta.grounding`), diet and calories; diet-breaking upgrades are removed
+- "How this was generated" drawer, per-step ingredient chips, an "Only your ingredients" badge and "Tuned to your feedback" notes (`adjustments`)
+- Follow-ups (`/v1/followup`): revise a plan in place ("I don't have garlic", "for 4"), with undo
+- `POST /v1/cooked`: "Cooked N times" now counts finished Cook Mode sessions and "I cooked this" taps only
+- `DAILY_LLM_CAP` budget on live model calls (503 when spent) and a rate limit on feedback/cooked votes
+- `OPENAI_BASE_URL` support for any OpenAI-compatible provider (e.g. Ollama)
+- Eval set (`apps/api/evals`) with a runner and CI job; vitest unit tests; Playwright flows for generate → regenerate → follow-up → cooked
+- About dialog and "an ai.doo demo" branding
+- `ci.yml` workflow (lint, tests, build, E2E, evals) reused by the deploy workflow
+
+### Changed
+- Regenerate sends `variation` + `avoid_titles`, which are part of the cache key, so it always produces a new dish
+- Client IP for rate limiting is read from the right of `X-Forwarded-For` (`TRUSTED_PROXY_HOPS`) or from `CLIENT_IP_HEADER`; spoofed headers no longer create new buckets
+- Every prompt-bound field is length- and count-limited; `spice_level` and `time_minutes` are validated
+- Generation cache entries expire after `GENERATION_CACHE_TTL_DAYS`
+- The Next.js proxy streams responses, cancels upstream on disconnect, and no longer leaks internal error text
+- Errors are shown in plain language; a failed generation restores the previous plan
+- First visit: the splash plays once per browser, the tour is opt-in, and presets/Budget Challenge generate in one tap
+- `page.tsx` split into focused components; prompts split into system/suggest/follow-up templates
+- Docs (`CLAUDE.md`, README, INSTRUCTIONS) brought up to date; Makefile gains test/lint/evals targets
+
+### Removed
+- Personal stats and streaks
+- `combo_count` in `CommunityStats` (replaced by `cooked_count`)
+
 ## [0.7.0] - 2026-07-01
 
 ### Added

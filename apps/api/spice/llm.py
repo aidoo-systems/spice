@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 load_dotenv()
 
-DEFAULT_MODEL = "gpt-4o-mini"
+DEFAULT_MODEL = "gpt-4o"
 _client: AsyncOpenAI | None = None
 
 
@@ -40,6 +40,9 @@ def _get_client() -> AsyncOpenAI:
         # One attempt, bounded: the route owns the overall deadline.
         _client = AsyncOpenAI(
             api_key=api_key,
+            # docker compose passes unset vars as "", which the SDK would
+            # otherwise take as the base URL.
+            base_url=os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1",
             timeout=float(os.environ.get("LLM_TIMEOUT", "60")),
             max_retries=0,
         )

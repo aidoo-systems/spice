@@ -35,14 +35,15 @@ The dev server runs on port `3737` by default (see `apps/web/package.json`).
 Environment (web):
 
 - `NEXT_PUBLIC_SITE_URL` (base URL for metadata, sitemap, robots)
-- `NEXT_PUBLIC_API_URL` (API proxy target for local/dev)
+- `API_URL` (where the `/api/*` proxy forwards; default `http://localhost:5000`)
 
-E2E tests (Playwright):
+Tests:
 
 ```bash
 cd apps/web
-npx playwright install
-npm run test:e2e
+npm run typecheck && npm test        # unit tests (vitest)
+npx playwright install chromium
+npm run test:e2e                      # E2E (API mocked)
 ```
 
 ## API (FastAPI)
@@ -50,9 +51,8 @@ npm run test:e2e
 Local dev:
 
 ```bash
-cd apps/api
-pip install -r requirements.txt
-make api
+make install-api
+make api        # from the repo root; sets PYTHONPATH for packages/shared
 ```
 
 The API runs on port `5000` by default.
@@ -84,16 +84,21 @@ cd apps/api
 PYTHONPATH="../../packages:." python -m pytest tests/ -v
 ```
 
+## Evals (real model)
+
+```bash
+cd apps/api
+OPENAI_API_KEY=... PYTHONPATH="../../packages:." python -m evals.run
+```
+
 ## Environment variables (common)
 
-These are defined in `README.md` and used by the API:
+The full table is in `README.md`. The ones that matter most in production:
 
-- `OPENAI_API_KEY`
-- `CORS_ORIGINS`
-- `RATE_LIMIT_MAX`
-- `RATE_LIMIT_WINDOW`
-- `DB_PATH`
-- `LOG_LEVEL`
+- `OPENAI_API_KEY`, `OPENAI_MODEL` (optional `OPENAI_BASE_URL`)
+- `DAILY_LLM_CAP`, `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW`
+- `TRUSTED_PROXY_HOPS` or `CLIENT_IP_HEADER` (must match your reverse proxy)
+- `CORS_ORIGINS`, `DB_PATH`, `LOG_LEVEL`
 
 ## Notes
 
@@ -107,6 +112,8 @@ npx next telemetry disable
 ## Production checklist (VPS)
 
 - Set `NEXT_PUBLIC_SITE_URL=https://spice.aidoo.biz` in the VPS environment.
+- Confirm how the edge proxy forwards the client IP and set `TRUSTED_PROXY_HOPS` / `CLIENT_IP_HEADER` to match (see README "Behind a reverse proxy").
+- Make sure the edge proxy doesn't buffer `/api/v1/*/stream` responses.
 - Ensure Docker Compose picks up that env value before `docker compose up --build`.
 - After deploy, verify:
   - `https://spice.aidoo.biz/robots.txt`

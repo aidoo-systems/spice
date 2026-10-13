@@ -373,3 +373,13 @@ def test_timeline_flags_steps_past_limit():
 def test_rejection_skips_checks():
     _resp, g, checks = sanitize_and_check(SuggestResponse(rejection="No."), _req())
     assert checks == [] and g.unlisted == []
+
+
+def test_empty_base_url_falls_back_to_openai(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test")
+    monkeypatch.setenv("OPENAI_BASE_URL", "")
+    monkeypatch.setattr(llm, "_client", None)
+    try:
+        assert str(llm._get_client().base_url).startswith("https://api.openai.com/v1")
+    finally:
+        llm._client = None

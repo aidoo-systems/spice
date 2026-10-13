@@ -6,6 +6,22 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.8.0",
+    date: "2026-10-13",
+    changes: [
+      { type: "added", text: "Plans stream in live as SPICE writes them" },
+      { type: "added", text: "Ask follow-ups to change a plan, with undo" },
+      { type: "added", text: "\u201cHow this was generated\u201d: model, timing and every check" },
+      { type: "added", text: "Per-step ingredient chips and an \u201cOnly your ingredients\u201d badge" },
+      { type: "added", text: "\u201cI cooked this\u201d and honest cooked counts" },
+      { type: "added", text: "About this demo" },
+      { type: "changed", text: "\u201cTry a different dish\u201d always gives a new plan" },
+      { type: "changed", text: "Presets cook in one tap; the tour is opt-in" },
+      { type: "changed", text: "Clearer error messages" },
+      { type: "fixed", text: "Community counts no longer count regenerations" },
+    ],
+  },
+  {
     version: "0.5.2",
     date: "2026-02-19",
     changes: [
