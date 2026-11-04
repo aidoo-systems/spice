@@ -1,51 +1,61 @@
 # Current Sprint
 
-Last updated: 2026-10-13
-Sprint: 1, ship v0.9.0
+Last updated: 2026-11-04
+Sprint: 2, the design items
 State: ready
 
 ## Goal
 
-v0.9.0 is live at spice.aidoo.biz and the owner has cooked one plan from it.
+The owner's three look-and-feel notes are fixed on the live site, and the owner
+has cooked one plan from it on a phone.
 
 ## Current truth
 
-- v0.9.0 is on `master`: the owner merged aidoo-systems/spice#6 on 2026-10-13
-  (merge commit `b449b4e`), which started the deploy. Production is on v0.9.0:
-  the deploy run succeeded and `/api/health` reports `0.9.0` (P1.1, Complete).
-- The studio adopted the repo on 2026-10-13: documents, `scripts/gates.sh`,
-  merged settings. Nothing in `apps/` or `packages/` was changed by adoption.
-- Gates, 2026-10-13: all nine pass on the P1.3 branch. On `master` until that
-  lands, `audit` still fails, and the runtime advisories (`next` is critical)
-  are in what production runs.
-- The owner has run v0.9.0 locally (API on 5000, web on 3737) and has not yet
-  said how it went.
-- Not known: whether the evals pass at 90% on this tree. CI on #6 decides.
+- Production runs `master`. v0.9.0 shipped on 2026-10-13 (P1.1, Complete); the
+  version string is still `0.9.0` and the fixes since are under `[Unreleased]`
+  in `CHANGELOG.md`.
+- Merged since: #8 (these notes), #9 (dependency advisories, P1.3 Complete),
+  #10 (real food is never rejected, P3.2), #11 (docs gate skips the staleness
+  check in a shallow clone).
+- 2026-11-04: a new critical `next` advisory (GHSA-2464-fhr4-w9xw, remote code
+  execution in image optimisation with SVGs) reached 15.5.27. The
+  `fix/next-rce-e2e-sprint` branch takes `next` to 15.5.29; until it merges,
+  production carries it.
+- The `e2e` gate failed now and then on "Start cooking": the tests clicked
+  before React had hydrated the page, so the click was lost. Fixed on the same
+  branch: every test waits for hydration first.
+- P3.2 is `Ready For Test`: the server never passes on a refusal of known food,
+  but nobody has yet seen `gpt-4o-mini` on the four new preset eval cases, and
+  the owner has not tapped the presets on the live site.
+- Not known: whether CI's evals run or skip without a key (they took 3 to 4
+  seconds on #9 and #10).
 
 ## Execution order
 
-1. Owner merges the P1.3 pull request (it deploys).
-2. Owner cooks one plan end to end on a phone from the live site (P1.2).
-3. The design items, which the owner asked for next on 2026-10-13. They are
-   roadmap rows P3.2 to P3.10. P3.2 (no dud rejections) is built and waits for
-   its pull request to merge; **next is `/next P3.3`**, the streaming stutter,
-   then P3.4. P3.5 and the speech line in P3.7 each need a decision first.
-4. `/next P2.1`: record the eval baseline on both models.
+1. Owner merges the `fix/next-rce-e2e-sprint` pull request (it deploys).
+2. `/next P3.3`: the plan streams in without the page jumping (owner note 2).
+3. `/next P3.4`: the waiting sentences and the heading font (owner note 3).
+4. P3.5 and the speech line in P3.7 wait for the owner's decision.
+5. `/next P2.1`: record the eval baseline on both models.
 
 ## Acceptance
 
-- `gh run list --workflow deploy.yml --limit 1` shows success, and
-  `curl -fsS https://spice.aidoo.biz/api/health` reports `0.9.0`.
+- `npm audit` in `apps/web` finds 0 vulnerabilities, and `bash scripts/gates.sh`
+  passes all nine gates.
 
 ## Owner gates: waiting on a human
 
-- Cook one plan on a phone.
-- P2.3 needs a decision: may anonymous combination signatures seed eval cases?
+- Cook one plan on a phone (P1.2), and tap the presets (P3.2).
+- P3.5: presets become pre-made plans you approve, or each gets its own time,
+  equipment and flavour?
+- P3.7: add speech to cook mode, or change "a cook mode that talks you through
+  it" on the home page?
+- P2.3: may anonymous combination signatures seed eval cases?
 
 ## Owner's look-and-feel notes (P3.1), 2026-10-13
 
-From the owner, after using v0.9.0. Not yet specific enough to build; a designer
-review was commissioned the same day and its findings are not recorded here.
+From the owner, after using v0.9.0. The designer review below makes them
+specific; roadmap rows P3.2 to P3.10 are built from both.
 
 1. **Presets return dud results.** Tapping "Couscous salad" gave the rejection
    "Couscous and cucumber? You call that a meal? Try it with some actual food."
@@ -197,6 +207,16 @@ flow on screen; dark mode beyond the top of the plan screen.
   not cached and cached ones are ignored; the prompt asks for one plain
   sentence. Red: 6 failed. Green: `bash scripts/gates.sh`, all nine pass.
   Branch is stacked on P1.3, so merge that first.
+
+### 2026-11-04
+- `npm audit`: 1 critical, `next` 10.0.0 to 15.5.27 (GHSA-2464-fhr4-w9xw, and
+  GHSA-p3m5-59mp-jv5r). `npm audit fix` takes `next` to 15.5.29, lockfile only;
+  the D-010 `postcss` override still holds. After: `found 0 vulnerabilities`.
+- `e2e`: `npx playwright test --repeat-each=3` gave `1 failed, 23 passed`, the
+  cook-mode test timing out on "Start cooking" with "Surprise me" focused and
+  the page never left home: a click before hydration. With `tests/hydrated.ts`
+  (open, then wait for React's fiber on a button), `--repeat-each=5`:
+  `40 passed (1.1m)`.
 
 ## Stop/handoff checklist
 

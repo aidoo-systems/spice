@@ -1,4 +1,5 @@
 import { test, expect, type Route } from "@playwright/test";
+import { openHydrated } from "./hydrated";
 
 // The API is mocked at the network layer so this runs without a backend.
 
@@ -57,7 +58,7 @@ test("a preset streams a checked plan, then a follow-up revises it", async ({ pa
     return route.fulfill({ json: { cooked_count: 4 } });
   });
 
-  await page.goto("/");
+  await openHydrated(page);
   await page.getByRole("button", { name: /Surprise me/ }).click();
 
   await expect(page.getByRole("heading", { level: 2, name: "Crispy egg fried rice", exact: true })).toBeVisible();
@@ -93,7 +94,7 @@ test("errors are shown in plain words and you land back home", async ({ page }) 
   await page.route("**/api/v1/suggest/stream", (route) =>
     route.fulfill({ status: 429, json: { detail: "You've cooked up a lot today. Give SPICE a breather and try again later." } }),
   );
-  await page.goto("/");
+  await openHydrated(page);
   await page.getByRole("button", { name: /Surprise me/ }).click();
   await expect(page.getByText("Give SPICE a breather")).toBeVisible();
   await expect(page.getByText("What’s in your kitchen?")).toBeVisible();
@@ -103,7 +104,7 @@ test("demo mode is labelled", async ({ page }) => {
   await page.route("**/api/v1/suggest/stream", (route) =>
     fulfillSSE(route, [["final", { ...plan, meta: { ...meta, mock: true, model: "demo (no API key)" } }]]),
   );
-  await page.goto("/");
+  await openHydrated(page);
   await page.getByRole("button", { name: /Surprise me/ }).click();
   await expect(page.getByText("Demo mode.")).toBeVisible();
 });
@@ -115,7 +116,7 @@ test("cook mode runs full screen and counts a cook when finished", async ({ page
     cookedCalls++;
     return route.fulfill({ json: { cooked_count: 4 } });
   });
-  await page.goto("/");
+  await openHydrated(page);
   await page.getByRole("button", { name: /Surprise me/ }).click();
   await page.getByRole("button", { name: "Start cooking" }).click();
 

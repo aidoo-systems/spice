@@ -10,6 +10,7 @@ All notable changes to SPICE are documented here.
 - The refusal message is one plain sentence; "Try it with some actual food." is gone
 
 ### Security
+- `next` 15.5.29: fixes a critical remote code execution in image optimisation (GHSA-2464-fhr4-w9xw)
 - Dependencies updated to clear every known high and critical advisory: `next` 15.5.27, `sharp`, `postcss`, `nanoid`, `source-map-js`; dev-only `vitest` 5 and `pytest` 9
 
 ## [0.9.0] - 2026-10-13
