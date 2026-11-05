@@ -1,7 +1,8 @@
 import { test, expect } from "@playwright/test";
+import { openHydrated } from "./hydrated";
 
 test("home leads with the input and a finished sample plan", async ({ page }) => {
-  await page.goto("/");
+  await openHydrated(page);
   await expect(page.getByRole("heading", { name: "What’s in your kitchen?" })).toBeVisible();
   await expect(page.getByRole("dialog")).toBeHidden(); // nothing plays on arrival
   await expect(page.getByText("30 min · Any diet · Savoury & umami · Medium heat · hob, pan")).toBeVisible();
@@ -16,7 +17,7 @@ test("home leads with the input and a finished sample plan", async ({ page }) =>
 });
 
 test("preferences live behind one Change link", async ({ page }) => {
-  await page.goto("/");
+  await openHydrated(page);
   await page.getByRole("button", { name: "Change" }).click();
   const sheet = page.getByRole("dialog", { name: "Preferences" });
   await sheet.getByRole("button", { name: "15 min" }).click();
@@ -29,7 +30,7 @@ test("preferences live behind one Change link", async ({ page }) => {
 test("theme follows the device unless chosen in settings", async ({ browser }) => {
   const context = await browser.newContext({ colorScheme: "light" });
   const page = await context.newPage();
-  await page.goto("/");
+  await openHydrated(page);
   await expect(page.locator("html")).not.toHaveClass(/dark/);
 
   await page.getByRole("button", { name: "Settings" }).click();
