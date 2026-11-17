@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-10-13
+Last updated: 2026-11-17
 
 ## How to use this file
 
@@ -56,7 +56,7 @@ on a phone. Taste is not machine-checkable; every item here is the owner's call.
 | ID | Outcome | Status | Gate | Stakes | Acceptance evidence |
 |---|---|---|---|---|---|
 | P3.1 | The owner's notes from using v0.9.0 are a list of specific changes | Proposed | owner | routine | The list exists in `CURRENT_SPRINT.md`, each line specific enough to build |
-| P3.2 | Real food is never rejected: every preset, and any list with a known food in it (owner note 1) | Ready For Test | machine | high | `pytest tests/test_engine.py -k "reject or preset or partial_carries"`: 6 failed before the change, pass after; `bash scripts/gates.sh`: `All gates passed.` (108 API tests). Still to record: the four `preset-*-not-rejected` eval cases on `gpt-4o-mini`, which CI runs |
+| P3.2 | Real food is never rejected: every preset, and any list with a known food in it (owner note 1) | Ready For Test | machine | high | `pytest tests/test_engine.py -k "reject or preset or partial_carries"`: 6 failed before the change, pass after; `bash scripts/gates.sh`: `All gates passed.` (108 API tests). Still to record: the four `preset-*-not-rejected` eval cases on `gpt-4o-mini`. **2026-11-17:** CI has never run them: the repository has no `OPENAI_API_KEY` secret, so the `evals` job skips every step and shows green (run 2026-11-04 on `fix/next-rce-e2e-sprint`: checkout, install and "Run evals" all `skipped`). They need the secret added, or one local run (README, Evals against the real model) |
 | P3.3 | The plan streams in without the page jumping (owner note 2) | Proposed | owner | routine | A Playwright measure of layout shift under 0.1 on first generation and on regenerate (0.35 and 0.48 today), then the owner watches it on a phone |
 | P3.4 | The waiting sentences are back, in the empty title slot before the first token (owner note 3), and headings render in Bricolage Grotesque | Proposed | owner | routine | A screenshot of the wait and of a heading at phone width; the owner says yes or no |
 | P3.5 | A preset cooks the dish on its label | Proposed | undefined | routine | Not yet specified. Needs a decision: presets become pre-made plans the owner approves, or each gets its own time, equipment and flavour. "Surprise me" is removed or curated in the same item |

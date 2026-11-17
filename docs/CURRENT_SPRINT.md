@@ -1,6 +1,6 @@
 # Current Sprint
 
-Last updated: 2026-11-04
+Last updated: 2026-11-17
 Sprint: 2, the design items
 State: ready
 
@@ -46,6 +46,7 @@ has cooked one plan from it on a phone.
 ## Owner gates: waiting on a human
 
 - Cook one plan on a phone (P1.2), and tap the presets (P3.2).
+- P3.2's evals have never run: add an `OPENAI_API_KEY` repository secret so CI's `evals` job runs (it skips, green, without one), or run them once locally.
 - P3.5: presets become pre-made plans you approve, or each gets its own time,
   equipment and flavour?
 - P3.7: add speech to cook mode, or change "a cook mode that talks you through
@@ -217,6 +218,9 @@ flow on screen; dark mode beyond the top of the plan screen.
   the page never left home: a click before hydration. With `tests/hydrated.ts`
   (open, then wait for React's fiber on a button), `--repeat-each=5`:
   `40 passed (1.1m)`.
+
+### 2026-11-17
+- RFT triage (owner approved: "Yes, land them"): P3.2 stays `Ready For Test`. Its row said CI runs the preset evals, but the repository has no `OPENAI_API_KEY` secret, so the `evals` job has skipped every step on every run and shown green. Added to Owner gates; the README's "Evals in CI" now says it needs the secret.
 
 ## Stop/handoff checklist
 
