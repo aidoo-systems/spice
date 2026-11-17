@@ -157,3 +157,26 @@ Keep superseded decisions. Link the replacement rather than rewriting history.
   "frozen peas"). A list of non-food head nouns (never complete).
 - **Revisit when:** The logs show "Model rejected real food" for lists that were
   not food more than rarely.
+
+## D-012: the audit gate ignores picomatch's ReDoS until a fix exists
+
+- **Status:** Accepted
+- **Date:** 2026-11-17
+- **Decision:** `scripts/audit-ignore.json` lists GHSA-fc5q-39xc-vjpf, and the
+  web half of the audit gate (`scripts/audit-filter.mjs`) fails on every other
+  high or critical advisory, but not on that one or on packages vulnerable
+  only through it (`vite`, `vitest`, `tinyglobby`, `fdir`).
+- **Why:** The advisory (published 2026-10-19) covers `picomatch` up to 4.0.7,
+  the latest release, with no patched version. `npm audit fix` leaves it, and
+  `--force` would take `vitest` back to 3.1.4, which still does not remove it.
+  `picomatch` is only in test and build tooling that matches this repo's own
+  globs; `npm audit --omit=dev` finds nothing. The owner chose this
+  (2026-11-17: "Ignore it until patched"), over leaving every gate run red.
+- **Alternatives:** Waiting for a fix with the gate red (every change blocked
+  on something it cannot fix). Auditing production dependencies only (hides
+  the next dev-tool advisory too). Lowering the audit level (hides everything
+  high).
+- **Consequences:** One known high advisory in dev tooling is accepted. The
+  gate prints that it is ignoring it on every run.
+- **Revisit when:** `picomatch` ships a fix: the gate then says the advisory
+  is no longer reported. Update the lockfile and delete the entry.

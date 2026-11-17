@@ -1,0 +1,3 @@
+{
+  "GHSA-fc5q-39xc-vjpf": "picomatch ReDoS, no fixed release; dev tooling only (vite, vitest). D-012"
+}
