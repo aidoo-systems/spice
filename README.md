@@ -16,7 +16,7 @@ SPICE is an [ai.doo](https://aidoo.biz) showcase app.
 - **Honest numbers**: "Cooked N times" counts only finished cook-mode sessions or "I cooked this" taps. It never counts generations.
 - **Taste feedback loop**: ratings change the next plan for those ingredients, and the plan says what it changed.
 - **Follow-ups with undo**: you can revise a plan without starting again.
-- **Evals in CI**: a fixed set of cases (diets, non-food, prompt injection, typos, rescue mode…) runs against the real model on every change.
+- **Evals in CI**: a fixed set of cases (diets, non-food, prompt injection, typos, rescue mode…) runs against the real model on every change, once the repository has an `OPENAI_API_KEY` secret (without one the CI job skips, green; it has none yet).
 - **Cost and abuse controls**:
   - per-IP rate limits, keyed on an IP the client can't spoof
   - a daily cap on live model calls
