@@ -148,7 +148,10 @@ check_audit() {
     echo "pip-audit not installed: the Python half was not audited"; code=1
   fi
   if [ "$WEB_OK" = "1" ]; then
-    (cd "$WEB" && npm audit --audit-level=high) || code=1
+    # High and critical fail, except advisories in scripts/audit-ignore.json
+    # (no fix exists yet; D-012).
+    node --test "$ROOT/scripts/audit-filter.test.mjs" >/dev/null || { echo "audit-filter tests failed"; code=1; }
+    node "$ROOT/scripts/audit-gate.mjs" "$WEB" || code=1
   fi
   return $code
 }
