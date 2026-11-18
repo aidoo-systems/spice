@@ -28,7 +28,7 @@ jobs:
         run: PYTHONPATH="../../packages:." python -m pytest -q
 
   web:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # Playwright has no chromium for ubuntu-latest (26.04) yet
     defaults:
       run:
         working-directory: apps/web
