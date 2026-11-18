@@ -1,6 +1,6 @@
 # Current Sprint
 
-Last updated: 2026-11-17
+Last updated: 2026-11-18
 Sprint: 2, the design items
 State: ready
 
@@ -221,6 +221,20 @@ flow on screen; dark mode beyond the top of the plan screen.
 
 ### 2026-11-17
 - RFT triage (owner approved: "Yes, land them"): P3.2 stays `Ready For Test`. Its row said CI runs the preset evals, but the repository has no `OPENAI_API_KEY` secret, so the `evals` job has skipped every step on every run and shown green. Added to Owner gates; the README's "Evals in CI" now says it needs the secret.
+
+### 2026-11-18
+- Audit gate: GHSA-fc5q-39xc-vjpf (`picomatch` ReDoS, no fixed release, dev
+  tooling only) is ignored until a fix exists (D-012, owner: "Ignore it until
+  patched"). `scripts/audit-gate.mjs` fails on every other high or critical
+  advisory and says when the ignored one is gone. Red first: without the
+  ignore entry, `1 high or critical advisories`, exit 1. `node --test
+  scripts/audit-filter.test.mjs`: pass 7. Review: Gemini (Codex at its limit
+  until 2026-11-19 21:21), round 1 two findings (a Windows path-casing check
+  could skip the gate; an advisory with no URL was dropped), both fixed; round
+  2 no blockers.
+- CI: the `web` job is pinned to `ubuntu-24.04`. `ubuntu-latest` is now 26.04
+  and `npx playwright install --with-deps chromium` fails on it ("Playwright
+  does not support chromium on ubuntu26.04-x64").
 
 ## Stop/handoff checklist
 
