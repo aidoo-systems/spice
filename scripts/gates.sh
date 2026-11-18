@@ -151,7 +151,7 @@ check_audit() {
     # High and critical fail, except advisories in scripts/audit-ignore.json
     # (no fix exists yet; D-012).
     node --test "$ROOT/scripts/audit-filter.test.mjs" >/dev/null || { echo "audit-filter tests failed"; code=1; }
-    node "$ROOT/scripts/audit-filter.mjs" "$WEB" || code=1
+    node "$ROOT/scripts/audit-gate.mjs" "$WEB" || code=1
   fi
   return $code
 }

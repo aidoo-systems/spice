@@ -56,3 +56,9 @@ test("a cycle in via does not loop", () => {
   const report = { vulnerabilities: { a: { via: ["b"] }, b: { via: ["a", adv("GHSA-x", "high")] } } };
   assert.deepEqual(filterAudit(report, new Set()).blocking.map((b) => b.name), ["b"]);
 });
+
+test("an advisory with no URL still blocks", () => {
+  const report = { vulnerabilities: { a: { via: [{ source: 1234, severity: "high", title: "no url" }] } } };
+  const { blocking } = filterAudit(report, new Set());
+  assert.deepEqual(blocking.map((b) => [b.name, b.id]), [["a", "no-id:1234"]]);
+});

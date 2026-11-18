@@ -163,7 +163,7 @@ Keep superseded decisions. Link the replacement rather than rewriting history.
 - **Status:** Accepted
 - **Date:** 2026-11-17
 - **Decision:** `scripts/audit-ignore.json` lists GHSA-fc5q-39xc-vjpf, and the
-  web half of the audit gate (`scripts/audit-filter.mjs`) fails on every other
+  web half of the audit gate (`scripts/audit-gate.mjs`) fails on every other
   high or critical advisory, but not on that one or on packages vulnerable
   only through it (`vite`, `vitest`, `tinyglobby`, `fdir`).
 - **Why:** The advisory (published 2026-10-19) covers `picomatch` up to 4.0.7,
